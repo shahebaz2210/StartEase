@@ -124,6 +124,24 @@ export function Navbar({
                 <button
                   onClick={() => {
                     setMenuOpen(false);
+                    if (typeof window !== "undefined" && (window as any).electronApi) {
+                      (window as any).electronApi.switchToFloat();
+                    } else {
+                      window.open("/float", "StartEaseFloat", "width=360,height=300,menubar=no,toolbar=no");
+                    }
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-[#4A5D50] hover:bg-[#EFF7F1] flex items-center gap-2 cursor-pointer"
+                >
+                  <svg className="w-4 h-4 text-[#2D5A3D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="14" x="3" y="3" rx="2" />
+                    <rect width="8" height="6" x="11" y="9" rx="1" />
+                  </svg>
+                  Floating companion mode
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
                     onOpenPrivacy();
                   }}
                   className="w-full text-left px-4 py-2.5 text-sm text-[#4A5D50] hover:bg-[#EFF7F1] flex items-center gap-2 cursor-pointer"

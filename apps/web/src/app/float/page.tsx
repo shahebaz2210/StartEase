@@ -131,9 +131,22 @@ export default function FloatPage() {
 
           <div className="flex items-center gap-1">
             <button
+              onClick={() => {
+                if (typeof window !== "undefined" && (window as any).electronApi) {
+                  (window as any).electronApi.switchToFull();
+                } else if (window.opener) {
+                  window.close();
+                }
+              }}
+              title="Expand to full window"
+              className="p-1 rounded text-[#718779] hover:bg-[#DDEEE2] transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-3 h-3" />
+            </button>
+            <button
               onClick={() => setIsCollapsed(true)}
               title="Collapse to pill"
-              className="p-1 rounded text-[#718779] hover:bg-[#DDEEE2] transition-colors"
+              className="p-1 rounded text-[#718779] hover:bg-[#DDEEE2] transition-colors cursor-pointer"
             >
               <Minimize2 className="w-3 h-3" />
             </button>
