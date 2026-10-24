@@ -70,8 +70,8 @@ function createMainWindow(float = false) {
   if (float) {
     const pos = loadSavedPosition();
     mainWindow = new BrowserWindow({
-      width: 350,
-      height: 270,
+      width: 370,
+      height: 310,
       x: pos.x,
       y: pos.y,
       alwaysOnTop: true,
@@ -80,7 +80,7 @@ function createMainWindow(float = false) {
       resizable: false,
       skipTaskbar: false,
       focusable: true,
-      hasShadow: true,
+      hasShadow: false,
       webPreferences: {
         preload: path.join(__dirname, "preload.js"),
         contextIsolation: true,
@@ -218,6 +218,20 @@ app.whenReady().then(() => {
   ipcMain.on("set-opacity", (_, opacity) => {
     if (mainWindow && typeof opacity === "number") {
       mainWindow.setOpacity(Math.max(0.4, Math.min(1.0, opacity)));
+    }
+  });
+
+  ipcMain.on("move-window", (_, { deltaX, deltaY }) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [x, y] = mainWindow.getPosition();
+      mainWindow.setPosition(Math.round(x + deltaX), Math.round(y + deltaY));
+    }
+  });
+
+  ipcMain.on("save-window-position", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [x, y] = mainWindow.getPosition();
+      savePosition(x, y);
     }
   });
 

@@ -11,6 +11,7 @@ import {
   X,
   Play,
   RotateCcw,
+  GripHorizontal,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { storage } from "@/lib/storage";
@@ -52,6 +53,52 @@ export default function FloatPage() {
     const next = { ...session, ...updated, lastUpdated: Date.now() };
     setSession(next);
     storage.saveSession(next);
+  };
+
+  // Window drag handler for Electron frameless transparent window
+  const handleDragStart = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only drag with left mouse button
+
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest("input") ||
+      target.closest(".no-drag")
+    ) {
+      return;
+    }
+
+    if (typeof window === "undefined" || !(window as any).electronApi?.moveBy) {
+      return;
+    }
+
+    e.preventDefault();
+
+    let startX = e.screenX;
+    let startY = e.screenY;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.screenX - startX;
+      const deltaY = moveEvent.screenY - startY;
+
+      if (deltaX !== 0 || deltaY !== 0) {
+        startX = moveEvent.screenX;
+        startY = moveEvent.screenY;
+        (window as any).electronApi.moveBy(deltaX, deltaY);
+      }
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      if ((window as any).electronApi?.savePosition) {
+        (window as any).electronApi.savePosition();
+      }
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
   const handleDone = async () => {
@@ -186,22 +233,23 @@ export default function FloatPage() {
 
   // 2. Expanded Floating Window View
   return (
-    <div className="min-h-screen bg-transparent p-3 flex items-center justify-center">
+    <div className="min-h-screen bg-transparent p-2 flex items-center justify-center">
       <div className="floating-window w-[340px] border border-[#D3E4D8] bg-white shadow-2xl flex flex-col justify-between">
-        {/* Compact Titlebar */}
+        {/* Compact Draggable Titlebar */}
         <div
-          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-          className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none cursor-move"
+          onMouseDown={handleDragStart}
+          className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none cursor-move active:cursor-grabbing"
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 pointer-events-none">
             <Sprout className="w-3.5 h-3.5 text-[#2D5A3D]" />
             <span className="font-serif-title text-xs font-bold text-[#1A3323]">StartEase</span>
           </div>
 
-          <div
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            className="flex items-center gap-1 cursor-default"
-          >
+          <div className="flex items-center gap-1 text-[#8EA696] pointer-events-none">
+            <GripHorizontal className="w-3.5 h-3.5" />
+          </div>
+
+          <div className="flex items-center gap-1 no-drag">
             <button
               onClick={() => {
                 if (typeof window !== "undefined" && (window as any).electronApi) {
@@ -225,14 +273,14 @@ export default function FloatPage() {
           </div>
         </div>
 
-        {/* First time drag hint */}
+        {/* Draggable Hint Banner */}
         {showHint && (
           <div
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between"
+            onMouseDown={handleDragStart}
+            className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between select-none cursor-move active:cursor-grabbing"
           >
             <span>Drag me anywhere. Tap bar to tuck away.</span>
-            <button onClick={() => setShowHint(false)} className="cursor-pointer">
+            <button onClick={() => setShowHint(false)} className="cursor-pointer p-0.5 no-drag">
               <X className="w-3 h-3 text-[#2D5A3D]" />
             </button>
           </div>
