@@ -1,0 +1,205 @@
+{
+  "description": "Each input should retrieve the expected catalogue row in the top 3. Step 1 must equal that row's first_tiny_action. Target: 85% top-3.",
+  "cases": [
+    {
+      "input": "make me a good-looking resume",
+      "expected_task_id": 1
+    },
+    {
+      "input": "build a resume that passes job screening software for placements",
+      "expected_task_id": 2
+    },
+    {
+      "input": "I need to write a paper for my research",
+      "expected_task_id": 3
+    },
+    {
+      "input": "put my research paper into LaTeX format",
+      "expected_task_id": 4
+    },
+    {
+      "input": "finish my college assignment",
+      "expected_task_id": 5
+    },
+    {
+      "input": "write the formal report for my project",
+      "expected_task_id": 6
+    },
+    {
+      "input": "design a front page for my project",
+      "expected_task_id": 7
+    },
+    {
+      "input": "take notes for my class",
+      "expected_task_id": 8
+    },
+    {
+      "input": "make neat handwritten-looking notes on my tablet",
+      "expected_task_id": 9
+    },
+    {
+      "input": "keep track of my citations and references",
+      "expected_task_id": 10
+    },
+    {
+      "input": "make a presentation that looks nice",
+      "expected_task_id": 11
+    },
+    {
+      "input": "prepare slides for a technical talk",
+      "expected_task_id": 12
+    },
+    {
+      "input": "make a poster for our college fest",
+      "expected_task_id": 13
+    },
+    {
+      "input": "design screens for my app",
+      "expected_task_id": 14
+    },
+    {
+      "input": "fix and edit photos for my project",
+      "expected_task_id": 15
+    },
+    {
+      "input": "make an infographic",
+      "expected_task_id": 16
+    },
+    {
+      "input": "design a logo for my club",
+      "expected_task_id": 17
+    },
+    {
+      "input": "draw a flowchart for my project",
+      "expected_task_id": 18
+    },
+    {
+      "input": "make a mind map of my ideas",
+      "expected_task_id": 19
+    },
+    {
+      "input": "make a short video explaining my topic",
+      "expected_task_id": 20
+    },
+    {
+      "input": "type my data into a table and organize it",
+      "expected_task_id": 21
+    },
+    {
+      "input": "clean up my messy dataset",
+      "expected_task_id": 22
+    },
+    {
+      "input": "do data analysis with Python",
+      "expected_task_id": 23
+    },
+    {
+      "input": "build a dashboard for business numbers",
+      "expected_task_id": 24
+    },
+    {
+      "input": "turn my spreadsheet into charts",
+      "expected_task_id": 25
+    },
+    {
+      "input": "run statistics on my data",
+      "expected_task_id": 26
+    },
+    {
+      "input": "create an online survey",
+      "expected_task_id": 27
+    },
+    {
+      "input": "go through my survey results",
+      "expected_task_id": 28
+    },
+    {
+      "input": "find research papers for my topic",
+      "expected_task_id": 29
+    },
+    {
+      "input": "keep track of dataset versions for my experiments",
+      "expected_task_id": 30
+    },
+    {
+      "input": "write some code",
+      "expected_task_id": 31
+    },
+    {
+      "input": "work with my team on code",
+      "expected_task_id": 32
+    },
+    {
+      "input": "quickly build a frontend prototype",
+      "expected_task_id": 33
+    },
+    {
+      "input": "test my API",
+      "expected_task_id": 34
+    },
+    {
+      "input": "design a database for my project",
+      "expected_task_id": 35
+    },
+    {
+      "input": "manage the tasks in my software project",
+      "expected_task_id": 36
+    },
+    {
+      "input": "track bugs in my software",
+      "expected_task_id": 37
+    },
+    {
+      "input": "make a website without coding much",
+      "expected_task_id": 38
+    },
+    {
+      "input": "build a prototype of a mobile app",
+      "expected_task_id": 39
+    },
+    {
+      "input": "write documentation for my API",
+      "expected_task_id": 40
+    },
+    {
+      "input": "organize my to-do list",
+      "expected_task_id": 41
+    },
+    {
+      "input": "make a timeline for my project",
+      "expected_task_id": 42
+    },
+    {
+      "input": "organize all my project notes and docs",
+      "expected_task_id": 43
+    },
+    {
+      "input": "manage my team's work with a board",
+      "expected_task_id": 44
+    },
+    {
+      "input": "set up a meeting",
+      "expected_task_id": 45
+    },
+    {
+      "input": "host an online team meeting",
+      "expected_task_id": 46
+    },
+    {
+      "input": "make a clean professional flow diagram",
+      "expected_task_id": 47
+    },
+    {
+      "input": "write a business proposal that looks polished",
+      "expected_task_id": 48
+    },
+    {
+      "input": "sign a PDF",
+      "expected_task_id": 49
+    },
+    {
+      "input": "write a professional email",
+      "expected_task_id": 50
+    }
+  ]
+}

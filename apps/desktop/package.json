@@ -1,0 +1,42 @@
+{
+  "name": "startease-desktop",
+  "version": "1.0.0",
+  "description": "StartEase: Adaptive AI task initiation companion",
+  "main": "src/main.js",
+  "author": "StartEase Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.startease.app",
+    "productName": "StartEase",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "../web/out/**/*"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

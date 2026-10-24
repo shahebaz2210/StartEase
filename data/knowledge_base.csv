@@ -1,0 +1,51 @@
+﻿task_id,task,task_category,desired_output,recommended_app,reason,first_tiny_action
+1,Create a visual resume,career_documents,visual_resume,Canva,"Provides resume templates and visual editing tools for a polished, design-led resume.",Open Canva and search for resume templates.
+2,Create an ATS-friendly placement resume,career_documents,ATS_friendly_resume,Microsoft Word,Supports clean text-first formatting suitable for resumes submitted to applicant tracking systems.,Open Word and create a blank document.
+3,Write a research paper,academic_writing,research_paper,Google Docs,"Supports structured writing, comments, and collaboration on academic documents.",Open Google Docs and create a blank document.
+4,Format a research paper in LaTeX,academic_writing,LaTeX_research_paper,Overleaf,Provides a browser-based LaTeX editor with academic templates and collaborative editing.,Open Overleaf and create a new project.
+5,Write a college assignment,academic_writing,assignment_document,Microsoft Word,Provides document formatting tools for writing and submitting college assignments.,Open Word and create a blank document.
+6,Prepare a formal project report,academic_writing,formal_project_report,Microsoft Word,"Supports headings, page layout, tables, and formal document formatting.",Open Word and create a blank document.
+7,Create a college project cover page,academic_design,project_cover_page,Canva,Provides ready-made cover-page layouts that can be customized with project details.,Open Canva and search for cover-page templates.
+8,Create class notes,study_organization,class_notes,Microsoft OneNote,Organizes notes into notebooks and sections for easy access across subjects.,Open OneNote and create a new page.
+9,Create handwritten-style digital notes,study_organization,handwritten_digital_notes,Goodnotes,Supports handwritten notes and annotation on compatible devices.,Open Goodnotes and create a new notebook.
+10,Manage references and research citations,research_management,reference_library,Zotero,"Helps collect, organize, and cite research sources.",Open Zotero and create a new collection.
+11,Create a visually attractive presentation,presentations,visual_presentation,Canva,Offers presentation templates and visual design tools for polished slides.,Open Canva and search for presentation templates.
+12,Prepare a technical or academic PPT,presentations,academic_presentation,Microsoft PowerPoint,"Provides slide layouts, charts, speaker notes, and presentation controls.",Open PowerPoint and create a blank presentation.
+13,Design a college event poster,visual_design,poster,Canva,Provides ready-made poster templates and simple visual editing.,Open Canva and search for poster templates.
+14,Design a website or app UI,product_design,UI_mockup,Figma,"Supports collaborative interface design, reusable components, and interactive prototypes.",Open Figma and create a new design file.
+15,Edit photos for a project,visual_design,edited_photos,Adobe Photoshop,"Provides detailed image editing, retouching, and compositing tools.",Open Photoshop and import one photo.
+16,Create an infographic,visual_design,infographic,Canva,Offers infographic layouts and visual elements for presenting information clearly.,Open Canva and search for infographic templates.
+17,Create a logo,brand_design,logo,Adobe Illustrator,Provides vector drawing tools suitable for scalable logo artwork.,Open Illustrator and create a new document.
+18,Create a project flowchart,diagramming,flowchart,diagrams.net,Provides shapes and connectors for building flowcharts and process diagrams.,Open diagrams.net and start a blank diagram.
+19,Create a mind map,study_planning,mind_map,XMind,Provides structured mind-mapping layouts for organizing ideas visually.,Open XMind and create a new mind map.
+20,Make a short explainer video,video_creation,short_explainer_video,CapCut,"Provides a timeline editor, captions, and accessible tools for assembling short videos.",Open CapCut and create a new project.
+21,Enter and organize tabular data,data_management,spreadsheet_data,Microsoft Excel,"Supports structured tables, sorting, filtering, and data validation.",Open Excel and create a blank workbook.
+22,Clean and transform datasets,data_analytics,cleaned_dataset,Power Query,Provides repeatable data-cleaning and transformation steps through a visual interface.,Open Power Query through Excel or Power BI.
+23,Analyze data using Python,data_analytics,python_data_analysis,JupyterLab,Provides notebooks for running Python code alongside analysis notes and outputs.,Open JupyterLab and create a Python notebook.
+24,Create an interactive business dashboard,business_intelligence,interactive_dashboard,Microsoft Power BI,Supports data modeling and interactive dashboards and reports.,Open Power BI Desktop and select Get Data.
+25,Create charts from spreadsheet data,data_visualization,spreadsheet_charts,Microsoft Excel,Provides chart tools that can turn selected spreadsheet data into visual summaries.,Open Excel and select a small sample of data.
+26,Run statistical analysis,statistics,statistical_analysis,RStudio,Provides an environment for writing and running R scripts for statistical analysis.,Open RStudio and create a new R script.
+27,Conduct an online survey,survey_research,online_survey,Google Forms,Lets users create and share surveys and collect responses online.,Open Google Forms and create a blank form.
+28,Analyze survey responses,survey_research,survey_results_analysis,Microsoft Excel,"Supports sorting, summaries, formulas, and charts for analyzing survey results.",Open the survey response spreadsheet.
+29,Find academic research papers,research_discovery,academic_sources,Google Scholar,Searches scholarly literature and helps locate academic publications.,Open Google Scholar and enter your research topic.
+30,Manage datasets and experiment versions,data_science_workflow,versioned_dataset,DVC,Tracks dataset and machine-learning artifact versions alongside code repositories.,Open your project repository and review DVC setup.
+31,Write and edit code,software_development,source_code,Visual Studio Code,"Provides a code editor with language extensions, debugging, and integrated terminal support.",Open VS Code and open your project folder.
+32,Collaborate on source code,software_collaboration,code_repository,GitHub,"Hosts Git repositories and supports code reviews, issues, and team collaboration.",Open GitHub and create or open a repository.
+33,Build a frontend prototype quickly,web_development,frontend_prototype,StackBlitz,Provides a browser-based development environment for quickly prototyping web applications.,Open StackBlitz and create a new project.
+34,Test API endpoints,software_testing,API_test_results,Postman,"Supports sending API requests, inspecting responses, and organizing endpoint tests.",Open Postman and create a new HTTP request.
+35,Design and test a database schema,database_design,database_schema_diagram,dbdiagram.io,Lets users describe database structures and generate schema diagrams.,Open dbdiagram.io and create a new diagram.
+36,Manage a software project's tasks,project_management,software_task_board,GitHub Projects,Provides project boards and issue-based tracking for software work.,Open GitHub Projects and create a project board.
+37,Track and fix software bugs,software_testing,bug_issue,GitHub Issues,"Lets teams record bugs, assign work, and track fixes alongside a code repository.",Open your repository's Issues tab and create an issue.
+38,Create a website without extensive coding,no_code_web_design,website,Webflow,Provides visual website-building tools and page layout controls.,Open Webflow and create a new site.
+39,Build a mobile app prototype,product_prototyping,mobile_app_prototype,FlutterFlow,Provides visual tools for assembling app screens and prototyping app flows.,Open FlutterFlow and create a new project.
+40,Document software APIs,software_documentation,API_documentation,Swagger Editor,Supports writing and validating OpenAPI specifications for API documentation.,Open Swagger Editor and start an OpenAPI document.
+41,Organize personal tasks,personal_productivity,personal_task_list,Todoist,"Provides task lists, due dates, and projects for organizing personal work.",Open Todoist and add one task.
+42,Create a project timeline or Gantt chart,project_planning,project_timeline,Microsoft Project,"Supports scheduling tasks, dependencies, milestones, and Gantt-style timelines.",Open Microsoft Project and create a new project.
+43,Organize project knowledge and documentation,knowledge_management,project_wiki,Notion,"Combines pages, databases, and linked documentation in a shared workspace.",Open Notion and create a project page.
+44,Coordinate a team using Kanban boards,team_collaboration,kanban_board,Trello,"Provides visual boards, lists, and cards for tracking team work.",Open Trello and create a board.
+45,Schedule meetings,calendar_management,meeting_schedule,Google Calendar,"Supports scheduling events, invitations, and reminders.",Open Google Calendar and create an event.
+46,Conduct online team meetings,team_communication,online_meeting,Google Meet,Supports video meetings and sharing a meeting link with participants.,Open Google Meet and start or schedule a meeting.
+47,Create a professional flow diagram,diagramming,professional_process_diagram,Lucidchart,Provides diagramming tools for structured process and system visuals.,Open Lucidchart and create a blank diagram.
+48,Create a polished business proposal,business_writing,business_proposal,Canva,Offers proposal templates and visual layouts for presenting a business idea.,Open Canva and search for proposal templates.
+49,Sign and manage PDF documents,document_management,signed_PDF,Adobe Acrobat,"Provides tools for viewing, organizing, annotating, and signing PDF documents.",Open Adobe Acrobat and open the PDF.
+50,Create a professional email,professional_communication,professional_email,Gmail,"Provides email composition, formatting, and sending tools for professional communication.",Open Gmail and start a new message.

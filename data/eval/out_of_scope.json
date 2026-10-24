@@ -1,0 +1,55 @@
+{
+  "description": "Expected: a gentle no-match message. Never a forced match, never a raw error. 'decide' means the team chooses the behaviour and records it.",
+  "cases": [
+    {
+      "input": "",
+      "expected": "no_match",
+      "note": "empty"
+    },
+    {
+      "input": "asdfgh jkl",
+      "expected": "no_match",
+      "note": "nonsense"
+    },
+    {
+      "input": "what's the weather today",
+      "expected": "no_match",
+      "note": "off topic"
+    },
+    {
+      "input": "plan my sister's wedding",
+      "expected": "no_match",
+      "note": "valid-sounding but not a work task"
+    },
+    {
+      "input": "help me with my diet plan",
+      "expected": "no_match",
+      "note": "medical or personal"
+    },
+    {
+      "input": "book a flight for my holiday",
+      "expected": "no_match",
+      "note": "personal"
+    },
+    {
+      "input": "do my taxes",
+      "expected": "no_match",
+      "note": "financial advice"
+    },
+    {
+      "input": "write a cover letter",
+      "expected": "decide",
+      "note": "work task not in catalogue. Decide: no_match or nearest row"
+    },
+    {
+      "input": "prepare for my job interview",
+      "expected": "decide",
+      "note": "work task not in catalogue. Decide: no_match or nearest row"
+    },
+    {
+      "input": "tell me a joke",
+      "expected": "no_match",
+      "note": "off topic"
+    }
+  ]
+}

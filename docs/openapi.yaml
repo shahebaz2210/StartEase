@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: StartEase API
+  version: 1.0.0
+  description: >
+    One step at a time. No response ever includes a step count, step index,
+    remaining steps or a list of steps. The Gemini key is used only on the server.
+servers:
+  - url: http://localhost:8000
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean } } } } } }
+  /v1/sessions:
+    post:
+      summary: Start a task and get the first step
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task]
+              properties:
+                task: { type: string, minLength: 1, maxLength: 300 }
+      responses:
+        "200":
+          description: A step, a no-match message or a crisis response
+          content: { application/json: { schema: { $ref: "#/components/schemas/StepResponse" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/sessions/{id}/respond:
+    post:
+      summary: The user taps a button
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response: { type: string, enum: [done, confused, too_big, not_now, cant_use_app] }
+      responses:
+        "200":
+          description: Next state
+          content: { application/json: { schema: { $ref: "#/components/schemas/StepResponse" } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/sessions/{id}/resume:
+    post:
+      summary: Come back after resting
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode: { type: string, enum: [same, smaller] }
+      responses:
+        "200":
+          description: The current or a smaller step
+          content: { application/json: { schema: { $ref: "#/components/schemas/StepResponse" } } }
+        "404":
+          description: Session expired. The client starts the same task again from the beginning.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /v1/sessions/{id}:
+    delete:
+      summary: Clear the session and delete its data
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      responses:
+        "204": { description: Deleted }
+components:
+  parameters:
+    SessionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    App:
+      type: object
+      properties:
+        name: { type: string, example: Canva }
+        reason: { type: string }
+    StepResponse:
+      type: object
+      required: [status]
+      properties:
+        session_id: { type: string }
+        status:
+          type: string
+          enum: [step, rest, complete, no_match, crisis]
+          description: >
+            step = show the step. rest = show the rest screen. complete = task done.
+            no_match = show the no-good-match message. crisis = show the fixed crisis text.
+        step: { type: string, description: Present only when status is step }
+        app: { $ref: "#/components/schemas/App" }
+        variant:
+          type: string
+          enum: [normal, explained, smaller]
+          description: Lets the UI show the right small label
+    Error:
+      type: object
+      properties:
+        error: { type: string, enum: [invalid_input, session_not_found, rate_limited, server_error] }
+        message: { type: string, description: Calm, user-safe text }
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
