@@ -3,7 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { Sprout } from "lucide-react";
 
-export function LoadingScreen() {
+interface LoadingScreenProps {
+  title?: string;
+  subtitle?: string;
+}
+
+export function LoadingScreen({
+  title = "Finding a small first step...",
+  subtitle = "Looking through tools to find the gentlest start for you.",
+}: LoadingScreenProps) {
   const [isSlow, setIsSlow] = useState(false);
 
   useEffect(() => {
@@ -22,12 +30,12 @@ export function LoadingScreen() {
 
         <div className="space-y-2">
           <h2 className="font-serif-title text-2xl font-bold text-[#1A3323]">
-            Finding a small first step...
+            {title}
           </h2>
           <p className="text-xs text-[#718779]">
             {isSlow
               ? "Still working on it. Thank you for waiting."
-              : "Looking through tools to find the gentlest start for you."}
+              : subtitle}
           </p>
         </div>
       </div>

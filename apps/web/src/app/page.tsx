@@ -30,6 +30,7 @@ export default function Home() {
   const [isCantUseAppOpen, setIsCantUseAppOpen] = useState(false);
   const [preferences, setPreferences] = useState<UserPreferences>(storage.getPreferences());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState<{ title: string; subtitle: string } | null>(null);
 
   // Restore session from localStorage on initial load
   useEffect(() => {
@@ -79,6 +80,10 @@ export default function Home() {
 
   // 2. Submit Task
   const handleSubmitTask = async (task: string, deadline: string | null) => {
+    setLoadingMessage({
+      title: "Finding a small first step...",
+      subtitle: "Looking through tools to find the gentlest start for you.",
+    });
     setCurrentScreen("loading");
     setErrorMessage(null);
 
@@ -117,6 +122,10 @@ export default function Home() {
   // 3. Step Action: Done
   const handleDone = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Moving forward...",
+      subtitle: "Getting your next gentle step ready.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -140,6 +149,10 @@ export default function Home() {
   // 4. Step Action: Confused
   const handleConfused = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Finding simpler words...",
+      subtitle: "Putting this in clearer language for you.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -157,6 +170,10 @@ export default function Home() {
   // 5. Step Action: Too Big
   const handleTooBig = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Making this step smaller...",
+      subtitle: "Breaking it into tinier, gentler actions.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -188,6 +205,10 @@ export default function Home() {
   // 7. Resume Same Step
   const handleResumeSame = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Resuming your step...",
+      subtitle: "Picking up right where you left off.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -204,6 +225,10 @@ export default function Home() {
   // 8. Resume Smaller Step
   const handleResumeSmaller = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Making this step smaller...",
+      subtitle: "Breaking it into tinier, gentler actions.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -220,6 +245,10 @@ export default function Home() {
   // 9. Substitute App
   const handleCantUseAppConfirm = async () => {
     if (!session) return;
+    setLoadingMessage({
+      title: "Finding another way...",
+      subtitle: "Picking a different tool to start with.",
+    });
     setCurrentScreen("loading");
 
     try {
@@ -312,7 +341,12 @@ export default function Home() {
         );
 
       case "loading":
-        return <LoadingScreen />;
+        return (
+          <LoadingScreen
+            title={loadingMessage?.title}
+            subtitle={loadingMessage?.subtitle}
+          />
+        );
 
       case "step":
         if (!session) return <LoadingScreen />;

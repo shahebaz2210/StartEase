@@ -21,6 +21,7 @@ export default function FloatPage() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showHint, setShowHint] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [transition, setTransition] = useState<{ title: string; subtitle: string } | null>(null);
 
   useEffect(() => {
     // Load active session from storage
@@ -34,6 +35,18 @@ export default function FloatPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Listen for storage changes from other windows
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = storage.getSession();
+      if (saved) {
+        setSession(saved);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const updateSession = (updated: Partial<SessionData>) => {
     if (!session) return;
     const next = { ...session, ...updated, lastUpdated: Date.now() };
@@ -42,8 +55,12 @@ export default function FloatPage() {
   };
 
   const handleDone = async () => {
-    if (!session) return;
+    if (!session || isLoading) return;
     setIsLoading(true);
+    setTransition({
+      title: "Moving forward...",
+      subtitle: "Getting your next gentle step ready.",
+    });
     try {
       const res = await api.respond(session.session_id, "done");
       updateSession({ ...res, variant: "normal" });
@@ -51,12 +68,17 @@ export default function FloatPage() {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setTransition(null);
     }
   };
 
   const handleConfused = async () => {
-    if (!session) return;
+    if (!session || isLoading) return;
     setIsLoading(true);
+    setTransition({
+      title: "Finding simpler words...",
+      subtitle: "Putting this in clearer language for you.",
+    });
     try {
       const res = await api.respond(session.session_id, "confused");
       updateSession({ ...res, variant: "simpler" });
@@ -64,12 +86,17 @@ export default function FloatPage() {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setTransition(null);
     }
   };
 
   const handleTooBig = async () => {
-    if (!session) return;
+    if (!session || isLoading) return;
     setIsLoading(true);
+    setTransition({
+      title: "Making this step smaller...",
+      subtitle: "Breaking it into tinier, gentler actions.",
+    });
     try {
       const res = await api.respond(session.session_id, "too_big");
       updateSession({ ...res, variant: "smaller" });
@@ -77,11 +104,12 @@ export default function FloatPage() {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setTransition(null);
     }
   };
 
   const handleNotNow = async () => {
-    if (!session) return;
+    if (!session || isLoading) return;
     try {
       const res = await api.respond(session.session_id, "not_now");
       updateSession({ ...res, status: "rest" });
@@ -91,8 +119,12 @@ export default function FloatPage() {
   };
 
   const handleResume = async (mode: "same" | "smaller") => {
-    if (!session) return;
+    if (!session || isLoading) return;
     setIsLoading(true);
+    setTransition({
+      title: mode === "smaller" ? "Making this step smaller..." : "Resuming step...",
+      subtitle: mode === "smaller" ? "Breaking it into tinier, gentler actions." : "Picking up right where you left off.",
+    });
     try {
       const res = await api.resume(session.session_id, mode);
       updateSession({ ...res, status: "step", variant: mode === "smaller" ? "smaller" : "normal" });
@@ -100,8 +132,42 @@ export default function FloatPage() {
       updateSession({ status: "step" });
     } finally {
       setIsLoading(false);
+      setTransition(null);
     }
   };
+
+  // Keyboard shortcuts (1: Done, 2: Confused, 3: Too big, Space: Not now)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLoading || transition || !session || session.status !== "step") return;
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === "1") {
+        e.preventDefault();
+        handleDone();
+      } else if (e.key === "2") {
+        e.preventDefault();
+        handleConfused();
+      } else if (e.key === "3") {
+        e.preventDefault();
+        handleTooBig();
+      } else if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handleNotNow();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [session, isLoading, transition]);
 
   // 1. Collapsed Pill View
   if (isCollapsed) {
@@ -123,13 +189,19 @@ export default function FloatPage() {
     <div className="min-h-screen bg-transparent p-3 flex items-center justify-center">
       <div className="floating-window w-[340px] border border-[#D3E4D8] bg-white shadow-2xl flex flex-col justify-between">
         {/* Compact Titlebar */}
-        <div className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none">
+        <div
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+          className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none cursor-move"
+        >
           <div className="flex items-center gap-1.5">
             <Sprout className="w-3.5 h-3.5 text-[#2D5A3D]" />
             <span className="font-serif-title text-xs font-bold text-[#1A3323]">StartEase</span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            className="flex items-center gap-1 cursor-default"
+          >
             <button
               onClick={() => {
                 if (typeof window !== "undefined" && (window as any).electronApi) {
@@ -155,17 +227,34 @@ export default function FloatPage() {
 
         {/* First time drag hint */}
         {showHint && (
-          <div className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between">
+          <div
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between"
+          >
             <span>Drag me anywhere. Tap bar to tuck away.</span>
-            <button onClick={() => setShowHint(false)}>
+            <button onClick={() => setShowHint(false)} className="cursor-pointer">
               <X className="w-3 h-3 text-[#2D5A3D]" />
             </button>
           </div>
         )}
 
         {/* Body content based on state */}
-        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-          {!session || !session.step ? (
+        <div className="p-4 flex-1 flex flex-col justify-between space-y-3 min-h-[190px]">
+          {transition ? (
+            <div className="py-7 px-2 text-center space-y-3 flex flex-col items-center justify-center flex-1 animate-in fade-in duration-200">
+              <div className="w-10 h-10 rounded-full bg-[#E1F0E6] flex items-center justify-center text-[#2D5A3D] mx-auto animate-pulse">
+                <Sprout className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-serif-title text-sm font-bold text-[#1A3323]">
+                  {transition.title}
+                </p>
+                <p className="text-[11px] text-[#5A7764] leading-relaxed">
+                  {transition.subtitle}
+                </p>
+              </div>
+            </div>
+          ) : !session || !session.step ? (
             <div className="text-center py-6 space-y-2">
               <p className="text-xs font-medium text-[#1A3323]">Nothing in progress.</p>
               <p className="text-[11px] text-[#718779]">
