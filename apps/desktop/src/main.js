@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, protocol, screen } = require("e
 const path = require("path");
 const fs = require("fs");
 
-let mainWindow = null;
+let fullWindow = null;
+let floatWindow = null;
 let tray = null;
 let isFloatMode = false;
 
@@ -62,68 +63,145 @@ function savePosition(x, y) {
   }
 }
 
-function createMainWindow(float = false) {
-  isFloatMode = float;
-
-  if (mainWindow) {
-    mainWindow.close();
+function createFullWindow() {
+  if (fullWindow && !fullWindow.isDestroyed()) {
+    return fullWindow;
   }
 
-  if (float) {
-    const pos = loadSavedPosition();
-    mainWindow = new BrowserWindow({
-      width: FLOAT_WIDTH,
-      height: FLOAT_HEIGHT,
-      minWidth: FLOAT_WIDTH,
-      maxWidth: FLOAT_WIDTH,
-      minHeight: FLOAT_HEIGHT,
-      maxHeight: FLOAT_HEIGHT,
-      x: pos.x,
-      y: pos.y,
-      alwaysOnTop: true,
-      frame: false,
-      transparent: true,
-      resizable: false,
-      skipTaskbar: false,
-      focusable: true,
-      hasShadow: false,
-      webPreferences: {
-        preload: path.join(__dirname, "preload.js"),
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-
-    mainWindow.setAlwaysOnTop(true, "floating");
-
-    mainWindow.on("moved", () => {
-      const [x, y] = mainWindow.getPosition();
-      savePosition(x, y);
-    });
-
-    mainWindow.loadURL("app://startease/float.html");
-  } else {
-    mainWindow = new BrowserWindow({
-      width: 1040,
-      height: 780,
-      minWidth: 800,
-      minHeight: 600,
-      center: true,
-      frame: true,
-      alwaysOnTop: false,
-      webPreferences: {
-        preload: path.join(__dirname, "preload.js"),
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-
-    mainWindow.loadURL("app://startease/index.html");
-  }
-
-  mainWindow.on("closed", () => {
-    mainWindow = null;
+  fullWindow = new BrowserWindow({
+    width: 1040,
+    height: 780,
+    minWidth: 800,
+    minHeight: 600,
+    center: true,
+    frame: true,
+    alwaysOnTop: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
   });
+
+  fullWindow.loadURL("app://startease/index.html");
+
+  // REQUIREMENT 1: When user minimizes the full desktop app, automatically open the floating window!
+  fullWindow.on("minimize", (event) => {
+    event.preventDefault();
+    switchToFloat();
+  });
+
+  fullWindow.on("close", () => {
+    // When user closes the main desktop window, quit the application
+    app.quit();
+  });
+
+  return fullWindow;
+}
+
+function createFloatWindow() {
+  if (floatWindow && !floatWindow.isDestroyed()) {
+    return floatWindow;
+  }
+
+  const pos = loadSavedPosition();
+  floatWindow = new BrowserWindow({
+    width: FLOAT_WIDTH,
+    height: FLOAT_HEIGHT,
+    minWidth: FLOAT_WIDTH,
+    maxWidth: FLOAT_WIDTH,
+    minHeight: FLOAT_HEIGHT,
+    maxHeight: FLOAT_HEIGHT,
+    x: pos.x,
+    y: pos.y,
+    alwaysOnTop: true,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    skipTaskbar: false,
+    focusable: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  floatWindow.setAlwaysOnTop(true, "floating");
+
+  floatWindow.on("moved", () => {
+    if (floatWindow && !floatWindow.isDestroyed()) {
+      const [x, y] = floatWindow.getPosition();
+      savePosition(x, y);
+    }
+  });
+
+  floatWindow.on("close", (e) => {
+    // If the full window is alive, just hide float window instead of closing
+    if (fullWindow && !fullWindow.isDestroyed()) {
+      e.preventDefault();
+      floatWindow.hide();
+    }
+  });
+
+  floatWindow.loadURL("app://startease/float.html");
+
+  return floatWindow;
+}
+
+function switchToFloat() {
+  isFloatMode = true;
+
+  // 1. Hide full window without destroying it - preserves state!
+  if (fullWindow && !fullWindow.isDestroyed()) {
+    fullWindow.hide();
+  }
+
+  // 2. Ensure float window exists
+  if (!floatWindow || floatWindow.isDestroyed()) {
+    createFloatWindow();
+  }
+
+  const pos = loadSavedPosition();
+  floatWindow.setBounds({ x: pos.x, y: pos.y, width: FLOAT_WIDTH, height: FLOAT_HEIGHT });
+  floatWindow.show();
+  floatWindow.focus();
+
+  // Notify float window to synchronize with latest session
+  if (floatWindow.webContents) {
+    floatWindow.webContents.send("sync-session");
+  }
+}
+
+function switchToFull() {
+  isFloatMode = false;
+
+  // 1. Hide float window
+  if (floatWindow && !floatWindow.isDestroyed()) {
+    floatWindow.hide();
+  }
+
+  // 2. Show & restore full window - NO RELOAD, NO RESTART!
+  if (!fullWindow || fullWindow.isDestroyed()) {
+    createFullWindow();
+    fullWindow.once("ready-to-show", () => {
+      fullWindow.show();
+      fullWindow.focus();
+    });
+  } else {
+    fullWindow.show();
+    if (fullWindow.isMinimized()) {
+      fullWindow.restore();
+    }
+    fullWindow.focus();
+    // Notify full window to sync with latest session state without restarting the page
+    if (fullWindow.webContents) {
+      fullWindow.webContents.send("sync-session");
+    }
+  }
 }
 
 function createTray() {
@@ -138,20 +216,19 @@ function createTray() {
     {
       label: "Open StartEase",
       click: () => {
-        if (!mainWindow) createMainWindow(false);
-        else mainWindow.show();
+        switchToFull();
       },
     },
     {
       label: "Floating Mode",
       click: () => {
-        createMainWindow(true);
+        switchToFloat();
       },
     },
     {
       label: "Full Window Mode",
       click: () => {
-        createMainWindow(false);
+        switchToFull();
       },
     },
     { type: "separator" },
@@ -160,19 +237,31 @@ function createTray() {
       submenu: [
         {
           label: "100%",
-          click: () => mainWindow && mainWindow.setOpacity(1.0),
+          click: () => {
+            const target = floatWindow || fullWindow;
+            if (target && !target.isDestroyed()) target.setOpacity(1.0);
+          },
         },
         {
           label: "90%",
-          click: () => mainWindow && mainWindow.setOpacity(0.9),
+          click: () => {
+            const target = floatWindow || fullWindow;
+            if (target && !target.isDestroyed()) target.setOpacity(0.9);
+          },
         },
         {
           label: "80%",
-          click: () => mainWindow && mainWindow.setOpacity(0.8),
+          click: () => {
+            const target = floatWindow || fullWindow;
+            if (target && !target.isDestroyed()) target.setOpacity(0.8);
+          },
         },
         {
           label: "70%",
-          click: () => mainWindow && mainWindow.setOpacity(0.7),
+          click: () => {
+            const target = floatWindow || fullWindow;
+            if (target && !target.isDestroyed()) target.setOpacity(0.7);
+          },
         },
       ],
     },
@@ -209,21 +298,23 @@ app.whenReady().then(() => {
     return require("electron").net.fetch(`file://${filePath}`);
   });
 
-  createMainWindow(false);
+  createFullWindow();
+  fullWindow.show();
   createTray();
 
   // IPC Handlers
   ipcMain.on("switch-to-float", () => {
-    createMainWindow(true);
+    switchToFloat();
   });
 
   ipcMain.on("switch-to-full", () => {
-    createMainWindow(false);
+    switchToFull();
   });
 
   ipcMain.on("set-opacity", (_, opacity) => {
-    if (mainWindow && typeof opacity === "number") {
-      mainWindow.setOpacity(Math.max(0.4, Math.min(1.0, opacity)));
+    const target = floatWindow || fullWindow;
+    if (target && !target.isDestroyed() && typeof opacity === "number") {
+      target.setOpacity(Math.max(0.4, Math.min(1.0, opacity)));
     }
   });
 
@@ -231,7 +322,7 @@ app.whenReady().then(() => {
   let isDragging = false;
 
   ipcMain.on("start-drag", (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const win = BrowserWindow.fromWebContents(event.sender) || floatWindow;
     if (!win || win.isDestroyed()) return;
 
     isDragging = true;
@@ -245,7 +336,7 @@ app.whenReady().then(() => {
 
   ipcMain.on("dragging", (event) => {
     if (!isDragging) return;
-    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const win = BrowserWindow.fromWebContents(event.sender) || floatWindow;
     if (!win || win.isDestroyed()) return;
 
     const cursor = screen.getCursorScreenPoint();
@@ -259,30 +350,33 @@ app.whenReady().then(() => {
 
   ipcMain.on("end-drag", (event) => {
     isDragging = false;
-    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const win = BrowserWindow.fromWebContents(event.sender) || floatWindow;
     if (win && !win.isDestroyed()) {
       const [x, y] = win.getPosition();
       savePosition(x, y);
     }
   });
 
-  ipcMain.on("move-window", (_, { deltaX, deltaY }) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const [x, y] = mainWindow.getPosition();
-      mainWindow.setPosition(Math.round(x + deltaX), Math.round(y + deltaY));
+  ipcMain.on("move-window", (event, { deltaX, deltaY }) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || floatWindow;
+    if (win && !win.isDestroyed()) {
+      const [x, y] = win.getPosition();
+      win.setPosition(Math.round(x + deltaX), Math.round(y + deltaY));
     }
   });
 
-  ipcMain.on("save-window-position", () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const [x, y] = mainWindow.getPosition();
+  ipcMain.on("save-window-position", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || floatWindow;
+    if (win && !win.isDestroyed()) {
+      const [x, y] = win.getPosition();
       savePosition(x, y);
     }
   });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow(false);
+      createFullWindow();
+      fullWindow.show();
     }
   });
 });

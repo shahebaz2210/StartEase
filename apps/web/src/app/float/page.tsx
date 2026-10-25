@@ -25,27 +25,30 @@ export default function FloatPage() {
   const [transition, setTransition] = useState<{ title: string; subtitle: string } | null>(null);
 
   useEffect(() => {
-    // Load active session from storage
-    const saved = storage.getSession();
-    if (saved) {
-      setSession(saved);
-    }
-
-    // Dismiss first-time hint after 8 seconds
-    const timer = setTimeout(() => setShowHint(false), 8000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Listen for storage changes from other windows
-  useEffect(() => {
-    const handleStorage = () => {
+    // Load active session from storage and keep in sync
+    const syncSession = () => {
       const saved = storage.getSession();
       if (saved) {
         setSession(saved);
       }
     };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+
+    syncSession();
+
+    window.addEventListener("storage", syncSession);
+    window.addEventListener("focus", syncSession);
+
+    if (typeof window !== "undefined" && (window as any).electronApi?.onSyncSession) {
+      (window as any).electronApi.onSyncSession(syncSession);
+    }
+
+    // Dismiss first-time hint after 8 seconds
+    const timer = setTimeout(() => setShowHint(false), 8000);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("storage", syncSession);
+      window.removeEventListener("focus", syncSession);
+    };
   }, []);
 
   const updateSession = (updated: Partial<SessionData>) => {

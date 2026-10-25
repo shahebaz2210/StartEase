@@ -10,4 +10,7 @@ contextBridge.exposeInMainWorld("electronApi", {
   endDrag: () => ipcRenderer.send("end-drag"),
   moveBy: (deltaX, deltaY) => ipcRenderer.send("move-window", { deltaX, deltaY }),
   savePosition: () => ipcRenderer.send("save-window-position"),
+  onSyncSession: (callback) => {
+    ipcRenderer.on("sync-session", () => callback());
+  },
 });

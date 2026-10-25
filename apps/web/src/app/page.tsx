@@ -32,15 +32,35 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<{ title: string; subtitle: string } | null>(null);
 
-  // Restore session from localStorage on initial load
+  // Restore session from localStorage on initial load and keep synchronized across windows
   useEffect(() => {
-    const saved = storage.getSession();
-    const prefs = storage.getPreferences();
-    setPreferences(prefs);
+    const syncFromStorage = () => {
+      const saved = storage.getSession();
+      const prefs = storage.getPreferences();
+      setPreferences(prefs);
 
-    if (saved && saved.step && saved.status !== "completed") {
-      setSession(saved);
-      if (saved.status === "rest") {
+      if (saved && saved.step) {
+        setSession(saved);
+        if (saved.status === "completed") {
+          setCurrentScreen("complete");
+          setActiveTab("focus");
+        } else if (saved.status === "rest") {
+          setCurrentScreen("rest");
+          setActiveTab("focus");
+        } else {
+          setCurrentScreen("step");
+          setActiveTab("focus");
+        }
+      }
+    };
+
+    // Initial check on mount
+    const initialSaved = storage.getSession();
+    const initialPrefs = storage.getPreferences();
+    setPreferences(initialPrefs);
+    if (initialSaved && initialSaved.step && initialSaved.status !== "completed") {
+      setSession(initialSaved);
+      if (initialSaved.status === "rest") {
         setCurrentScreen("rest");
         setActiveTab("focus");
       } else {
@@ -48,9 +68,20 @@ export default function Home() {
         setActiveTab("focus");
       }
     } else {
-      // Default initial screen
       setCurrentScreen("welcome");
     }
+
+    window.addEventListener("storage", syncFromStorage);
+    window.addEventListener("focus", syncFromStorage);
+
+    if (typeof window !== "undefined" && (window as any).electronApi?.onSyncSession) {
+      (window as any).electronApi.onSyncSession(syncFromStorage);
+    }
+
+    return () => {
+      window.removeEventListener("storage", syncFromStorage);
+      window.removeEventListener("focus", syncFromStorage);
+    };
   }, []);
 
   // Update session in storage whenever it changes
