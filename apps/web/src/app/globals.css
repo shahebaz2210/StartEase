@@ -121,8 +121,8 @@
 
 /* Floating window styles */
 .floating-window {
-  width: 350px;
-  max-width: 100vw;
+  width: 340px;
+  max-width: 340px;
   background: #FFFFFF;
   border-radius: 1.25rem;
   box-shadow: 0 15px 35px -5px rgba(20, 45, 30, 0.15), 0 0 1px 1px rgba(20, 45, 30, 0.05);

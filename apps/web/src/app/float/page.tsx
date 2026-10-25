@@ -81,13 +81,23 @@ export default function FloatPage() {
 
     (window as any).electronApi.startDrag();
 
+    let animationFrameId: number | null = null;
+
     const onPointerMove = () => {
-      if ((window as any).electronApi?.dragging) {
-        (window as any).electronApi.dragging();
-      }
+      if (animationFrameId !== null) return;
+      animationFrameId = requestAnimationFrame(() => {
+        animationFrameId = null;
+        if ((window as any).electronApi?.dragging) {
+          (window as any).electronApi.dragging();
+        }
+      });
     };
 
     const onPointerUp = (upEvent: PointerEvent) => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
       try {
         elem.releasePointerCapture(upEvent.pointerId);
       } catch (err) {}

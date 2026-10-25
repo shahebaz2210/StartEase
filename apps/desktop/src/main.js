@@ -9,6 +9,8 @@ let isFloatMode = false;
 // Path to static web export
 const WEB_OUT_DIR = path.join(__dirname, "../../web/out");
 const STATE_FILE = path.join(app.getPath("userData"), "window-state.json");
+const FLOAT_WIDTH = 360;
+const FLOAT_HEIGHT = 310;
 
 // Register custom protocol app://startease
 protocol.registerSchemesAsPrivileged([
@@ -70,8 +72,12 @@ function createMainWindow(float = false) {
   if (float) {
     const pos = loadSavedPosition();
     mainWindow = new BrowserWindow({
-      width: 370,
-      height: 310,
+      width: FLOAT_WIDTH,
+      height: FLOAT_HEIGHT,
+      minWidth: FLOAT_WIDTH,
+      maxWidth: FLOAT_WIDTH,
+      minHeight: FLOAT_HEIGHT,
+      maxHeight: FLOAT_HEIGHT,
       x: pos.x,
       y: pos.y,
       alwaysOnTop: true,
@@ -221,59 +227,43 @@ app.whenReady().then(() => {
     }
   });
 
-  let dragInterval = null;
   let dragOffset = { x: 0, y: 0 };
-  let activeDragWin = null;
+  let isDragging = false;
 
   ipcMain.on("start-drag", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
     if (!win || win.isDestroyed()) return;
 
-    activeDragWin = win;
+    isDragging = true;
     const cursor = screen.getCursorScreenPoint();
     const [winX, winY] = win.getPosition();
     dragOffset = {
       x: cursor.x - winX,
       y: cursor.y - winY,
     };
-
-    if (dragInterval) clearInterval(dragInterval);
-
-    dragInterval = setInterval(() => {
-      if (!activeDragWin || activeDragWin.isDestroyed()) {
-        clearInterval(dragInterval);
-        dragInterval = null;
-        return;
-      }
-      const currentCursor = screen.getCursorScreenPoint();
-      activeDragWin.setPosition(
-        Math.round(currentCursor.x - dragOffset.x),
-        Math.round(currentCursor.y - dragOffset.y)
-      );
-    }, 16);
   });
 
   ipcMain.on("dragging", (event) => {
+    if (!isDragging) return;
     const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
     if (!win || win.isDestroyed()) return;
-    const currentCursor = screen.getCursorScreenPoint();
-    win.setPosition(
-      Math.round(currentCursor.x - dragOffset.x),
-      Math.round(currentCursor.y - dragOffset.y)
-    );
+
+    const cursor = screen.getCursorScreenPoint();
+    win.setBounds({
+      x: Math.round(cursor.x - dragOffset.x),
+      y: Math.round(cursor.y - dragOffset.y),
+      width: FLOAT_WIDTH,
+      height: FLOAT_HEIGHT,
+    });
   });
 
   ipcMain.on("end-drag", (event) => {
-    if (dragInterval) {
-      clearInterval(dragInterval);
-      dragInterval = null;
-    }
+    isDragging = false;
     const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
     if (win && !win.isDestroyed()) {
       const [x, y] = win.getPosition();
       savePosition(x, y);
     }
-    activeDragWin = null;
   });
 
   ipcMain.on("move-window", (_, { deltaX, deltaY }) => {
