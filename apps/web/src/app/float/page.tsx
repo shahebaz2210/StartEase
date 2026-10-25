@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Sprout,
   CheckCircle2,
@@ -23,6 +23,8 @@ export default function FloatPage() {
   const [showHint, setShowHint] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [transition, setTransition] = useState<{ title: string; subtitle: string } | null>(null);
+  const [isStagnant, setIsStagnant] = useState(false);
+  const lastActiveTimeRef = useRef(Date.now());
 
   useEffect(() => {
     // Load active session from storage and keep in sync
@@ -48,6 +50,59 @@ export default function FloatPage() {
       clearTimeout(timer);
       window.removeEventListener("storage", syncSession);
       window.removeEventListener("focus", syncSession);
+    };
+  }, []);
+
+  // Stagnation Detection: 3 minutes (180,000 ms) of idle on the active step
+  useEffect(() => {
+    lastActiveTimeRef.current = Date.now();
+    setIsStagnant(false);
+  }, [session?.step, session?.status]);
+
+  useEffect(() => {
+    if (!session || session.status !== "step") {
+      setIsStagnant(false);
+      return;
+    }
+
+    const checkStagnation = async () => {
+      if (isStagnant || isLoading || transition) return;
+
+      // 1. Check OS-wide system idle time if running in Electron
+      if (typeof window !== "undefined" && (window as any).electronApi?.getSystemIdleTime) {
+        try {
+          const idleSec = await (window as any).electronApi.getSystemIdleTime();
+          if (idleSec >= 180) {
+            setIsStagnant(true);
+            return;
+          }
+        } catch {}
+      }
+
+      // 2. Check in-app local inactivity (3 minutes = 180,000 ms)
+      const idleMs = Date.now() - lastActiveTimeRef.current;
+      if (idleMs >= 180000) {
+        setIsStagnant(true);
+      }
+    };
+
+    const interval = setInterval(checkStagnation, 5000);
+    return () => clearInterval(interval);
+  }, [session, isStagnant, isLoading, transition]);
+
+  // Track user input/pointer on the window to reset in-app idle timer
+  useEffect(() => {
+    const handleActivity = () => {
+      lastActiveTimeRef.current = Date.now();
+    };
+
+    window.addEventListener("pointerdown", handleActivity);
+    window.addEventListener("pointermove", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+    return () => {
+      window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("pointermove", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
     };
   }, []);
 
@@ -215,6 +270,19 @@ export default function FloatPage() {
         return;
       }
 
+      if (isStagnant) {
+        if (e.key === "1" || e.key === "Enter") {
+          e.preventDefault();
+          setIsStagnant(false);
+          lastActiveTimeRef.current = Date.now();
+        } else if (e.key === " " || e.code === "Space" || e.key === "2") {
+          e.preventDefault();
+          setIsStagnant(false);
+          handleNotNow();
+        }
+        return;
+      }
+
       if (e.key === "1") {
         e.preventDefault();
         handleDone();
@@ -232,7 +300,7 @@ export default function FloatPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [session, isLoading, transition]);
+  }, [session, isLoading, transition, isStagnant]);
 
   // 1. Collapsed Pill View
   if (isCollapsed) {
@@ -374,45 +442,81 @@ export default function FloatPage() {
                 )}
               </div>
 
-              {/* 4 Compact Buttons */}
-              <div className="space-y-1.5 pt-2">
-                <button
-                  onClick={handleDone}
-                  disabled={isLoading}
-                  className="w-full py-2.5 px-3 rounded-xl btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Done</span>
-                </button>
-
-                <div className="grid grid-cols-2 gap-1.5">
+              {/* Actions or Ambient Stagnation Check-in */}
+              {isStagnant ? (
+                <div className="bg-[#EFF7F1] border border-[#C5DDCB] rounded-xl p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-center gap-1.5 text-[#2D5A3D]">
+                    <Sprout className="w-4 h-4 shrink-0 text-[#2D5A3D]" />
+                    <p className="font-serif-title text-xs font-bold text-[#1A3323]">
+                      Still on this step, or take a rest?
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-[#5A7764] leading-relaxed">
+                    No rush at all. You can keep going or step away with zero guilt.
+                  </p>
+                  <div className="flex gap-2 pt-0.5">
+                    <button
+                      onClick={() => {
+                        setIsStagnant(false);
+                        lastActiveTimeRef.current = Date.now();
+                      }}
+                      className="flex-1 py-2 px-2.5 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Play className="w-3 h-3 fill-white" />
+                      <span>Still on it</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsStagnant(false);
+                        handleNotNow();
+                      }}
+                      className="flex-1 py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Pause className="w-3 h-3 text-[#2D5A3D]" />
+                      <span>Take a rest</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5 pt-2">
                   <button
-                    onClick={handleConfused}
+                    onClick={handleDone}
                     disabled={isLoading}
-                    className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
+                    className="w-full py-2.5 px-3 rounded-xl btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs"
                   >
-                    <MessageSquare className="w-3 h-3 text-[#2D5A3D]" />
-                    <span>Confused</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Done</span>
                   </button>
 
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={handleConfused}
+                      disabled={isLoading}
+                      className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <MessageSquare className="w-3 h-3 text-[#2D5A3D]" />
+                      <span>Confused</span>
+                    </button>
+
+                    <button
+                      onClick={handleTooBig}
+                      disabled={isLoading}
+                      className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <Minimize2 className="w-3 h-3 text-[#2D5A3D]" />
+                      <span>Too big</span>
+                    </button>
+                  </div>
+
                   <button
-                    onClick={handleTooBig}
-                    disabled={isLoading}
-                    className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
+                    onClick={handleNotNow}
+                    className="w-full py-1.5 text-[11px] text-[#718779] hover:text-[#1A3323] flex items-center justify-center gap-1"
                   >
-                    <Minimize2 className="w-3 h-3 text-[#2D5A3D]" />
-                    <span>Too big</span>
+                    <Pause className="w-3 h-3" />
+                    <span>Not now</span>
                   </button>
                 </div>
-
-                <button
-                  onClick={handleNotNow}
-                  className="w-full py-1.5 text-[11px] text-[#718779] hover:text-[#1A3323] flex items-center justify-center gap-1"
-                >
-                  <Pause className="w-3 h-3" />
-                  <span>Not now</span>
-                </button>
-              </div>
+              )}
             </>
           )}
         </div>

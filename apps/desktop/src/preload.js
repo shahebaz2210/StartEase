@@ -13,4 +13,5 @@ contextBridge.exposeInMainWorld("electronApi", {
   onSyncSession: (callback) => {
     ipcRenderer.on("sync-session", () => callback());
   },
+  getSystemIdleTime: () => ipcRenderer.invoke("get-system-idle-time"),
 });

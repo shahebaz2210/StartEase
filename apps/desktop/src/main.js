@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, protocol, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, protocol, screen, powerMonitor } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -370,6 +370,14 @@ app.whenReady().then(() => {
     if (win && !win.isDestroyed()) {
       const [x, y] = win.getPosition();
       savePosition(x, y);
+    }
+  });
+
+  ipcMain.handle("get-system-idle-time", () => {
+    try {
+      return powerMonitor ? powerMonitor.getSystemIdleTime() : 0;
+    } catch {
+      return 0;
     }
   });
 
