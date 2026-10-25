@@ -56,7 +56,7 @@ export default function FloatPage() {
   };
 
   // Window drag handler for Electron frameless transparent window
-  const handleDragStart = (e: React.MouseEvent) => {
+  const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return; // Only drag with left mouse button
 
     const target = e.target as HTMLElement;
@@ -69,36 +69,41 @@ export default function FloatPage() {
       return;
     }
 
-    if (typeof window === "undefined" || !(window as any).electronApi?.moveBy) {
+    if (typeof window === "undefined" || !(window as any).electronApi?.startDrag) {
       return;
     }
 
     e.preventDefault();
+    const elem = e.currentTarget;
+    try {
+      elem.setPointerCapture(e.pointerId);
+    } catch (err) {}
 
-    let startX = e.screenX;
-    let startY = e.screenY;
+    (window as any).electronApi.startDrag();
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.screenX - startX;
-      const deltaY = moveEvent.screenY - startY;
-
-      if (deltaX !== 0 || deltaY !== 0) {
-        startX = moveEvent.screenX;
-        startY = moveEvent.screenY;
-        (window as any).electronApi.moveBy(deltaX, deltaY);
+    const onPointerMove = () => {
+      if ((window as any).electronApi?.dragging) {
+        (window as any).electronApi.dragging();
       }
     };
 
-    const onMouseUp = () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      if ((window as any).electronApi?.savePosition) {
-        (window as any).electronApi.savePosition();
+    const onPointerUp = (upEvent: PointerEvent) => {
+      try {
+        elem.releasePointerCapture(upEvent.pointerId);
+      } catch (err) {}
+
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+
+      if ((window as any).electronApi?.endDrag) {
+        (window as any).electronApi.endDrag();
       }
     };
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   };
 
   const handleDone = async () => {
@@ -237,8 +242,8 @@ export default function FloatPage() {
       <div className="floating-window w-[340px] border border-[#D3E4D8] bg-white shadow-2xl flex flex-col justify-between">
         {/* Compact Draggable Titlebar */}
         <div
-          onMouseDown={handleDragStart}
-          className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none cursor-move active:cursor-grabbing"
+          onPointerDown={handleDragStart}
+          className="bg-[#EFF7F1] px-3.5 py-2 border-b border-[#D3E4D8]/60 flex items-center justify-between select-none cursor-move active:cursor-grabbing touch-none"
         >
           <div className="flex items-center gap-1.5 pointer-events-none">
             <Sprout className="w-3.5 h-3.5 text-[#2D5A3D]" />
@@ -276,8 +281,8 @@ export default function FloatPage() {
         {/* Draggable Hint Banner */}
         {showHint && (
           <div
-            onMouseDown={handleDragStart}
-            className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between select-none cursor-move active:cursor-grabbing"
+            onPointerDown={handleDragStart}
+            className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between select-none cursor-move active:cursor-grabbing touch-none"
           >
             <span>Drag me anywhere. Tap bar to tuck away.</span>
             <button onClick={() => setShowHint(false)} className="cursor-pointer p-0.5 no-drag">

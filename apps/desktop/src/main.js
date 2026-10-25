@@ -221,6 +221,61 @@ app.whenReady().then(() => {
     }
   });
 
+  let dragInterval = null;
+  let dragOffset = { x: 0, y: 0 };
+  let activeDragWin = null;
+
+  ipcMain.on("start-drag", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    if (!win || win.isDestroyed()) return;
+
+    activeDragWin = win;
+    const cursor = screen.getCursorScreenPoint();
+    const [winX, winY] = win.getPosition();
+    dragOffset = {
+      x: cursor.x - winX,
+      y: cursor.y - winY,
+    };
+
+    if (dragInterval) clearInterval(dragInterval);
+
+    dragInterval = setInterval(() => {
+      if (!activeDragWin || activeDragWin.isDestroyed()) {
+        clearInterval(dragInterval);
+        dragInterval = null;
+        return;
+      }
+      const currentCursor = screen.getCursorScreenPoint();
+      activeDragWin.setPosition(
+        Math.round(currentCursor.x - dragOffset.x),
+        Math.round(currentCursor.y - dragOffset.y)
+      );
+    }, 16);
+  });
+
+  ipcMain.on("dragging", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    if (!win || win.isDestroyed()) return;
+    const currentCursor = screen.getCursorScreenPoint();
+    win.setPosition(
+      Math.round(currentCursor.x - dragOffset.x),
+      Math.round(currentCursor.y - dragOffset.y)
+    );
+  });
+
+  ipcMain.on("end-drag", (event) => {
+    if (dragInterval) {
+      clearInterval(dragInterval);
+      dragInterval = null;
+    }
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    if (win && !win.isDestroyed()) {
+      const [x, y] = win.getPosition();
+      savePosition(x, y);
+    }
+    activeDragWin = null;
+  });
+
   ipcMain.on("move-window", (_, { deltaX, deltaY }) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const [x, y] = mainWindow.getPosition();
