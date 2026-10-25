@@ -16,7 +16,7 @@ BANNED_WORDS = [
     r"\beasy\b",
     r"\byou\s+missed\b",
     r"\bstreak\b",
-    r"\bpoints\b",
+    r"\b(earn|score|gain|streak)\s+points\b",
 ]
 
 STEP_COUNT_PATTERNS = [

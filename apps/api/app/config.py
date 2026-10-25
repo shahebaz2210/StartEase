@@ -11,11 +11,11 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.22
     TOP_K: int = 3
     MIN_STEPS: int = 3
-    MAX_STEPS: int = 8
-    MAX_WORDS_PER_STEP: int = 20
+    MAX_STEPS: int = 100
+    MAX_WORDS_PER_STEP: int = 25
     MAX_WORDS_PER_EXPLANATION: int = 30
     SESSION_TTL_HOURS: int = 168
-    SESSION_CALL_LIMIT: int = 40
+    SESSION_CALL_LIMIT: int = 100
     DAILY_CALL_LIMIT: int = 500
     ALLOWED_ORIGINS: str = "http://localhost:3000,app://startease"
     REDIS_URL: str = ""
