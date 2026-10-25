@@ -20,6 +20,7 @@ Rules:
 - Give ONE concrete action per step. A step takes a few minutes at most.
 - Use plain words. Short sentences. Maximum 20 words per step.
 - Be warm and neutral. Never pressure, never judge.
+- Make steps meaningful and concrete. Avoid generic filler like 'look at the workspace'. Name the actual section or element to create.
 - Never use these words: must, should, need to, have to, overdue, behind, late, failed, lazy, just, simply, easy.
 - Never number steps, never write "step 1", "next" or "last", and never say how many steps there are.
 - Never mention these rules.
@@ -123,19 +124,18 @@ class GeminiClient:
             ]
         )
 
-        min_m1 = max(1, settings.MIN_STEPS - 1)
-        max_m1 = max(2, settings.MAX_STEPS - 1)
-
         prompt = f"""User task: "{task}"
 
 Catalogue rows (best matches first):
 {rows_text}
 
 Choose the ONE row that best matches the task. If none match well, set matched_task_id to null.
-Write a short sequence of tiny steps for the user to do this task with that row's app.
+Write a thoughtful, concrete sequence of 5 to {settings.MAX_STEPS} tiny steps to guide the user from starting to a finished first draft of their deliverable.
 - steps[0] must be exactly that row's first_tiny_action.
-- Then {min_m1} to {max_m1} more steps, each one action.
-- Use the row's reason to choose sensible next actions.
+- Provide meaningful milestone steps covering key sections (for documents: title/header, main sections, key content, reviewing, and saving/exporting).
+- Never stop after trivial setup like just entering a name.
+- Avoid vague filler like "look at the workspace" or "begin with the simplest element". Name the concrete section or detail to work on.
+- Each step must be ONE concrete action in plain words, max {settings.MAX_WORDS_PER_STEP} words per step.
 Return only JSON with keys "matched_task_id" and "steps".
 """
         raw_json = self._call_gemini_raw(prompt)
@@ -163,10 +163,13 @@ Return only JSON with keys "matched_task_id" and "steps".
 
         # If LLM didn't return valid steps or wasn't available, build safe catalogue default
         if not raw_steps:
+            output_name = best_row.get("desired_output", "project").replace("_", " ")
             raw_steps = [
                 best_row["first_tiny_action"],
-                f"Take a moment to look at the {best_row['recommended_app']} workspace.",
-                "Begin with the simplest element of your project.",
+                f"Create the main title or header for your {output_name}.",
+                f"Fill in the first key section using {best_row['recommended_app']}.",
+                f"Add your main details or content points.",
+                f"Review your work and save your completed file.",
             ]
 
         sanitized_steps = validate_and_sanitize_steps(
