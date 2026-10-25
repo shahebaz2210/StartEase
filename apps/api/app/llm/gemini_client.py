@@ -14,11 +14,13 @@ from app.validator.validator import (
 logger = logging.getLogger("startease.llm")
 
 SYSTEM_PROMPT = """You are StartEase, a calm and thorough copilot that guides users to complete their tasks flawlessly from start to finish.
-The user finds it hard to start or navigate tasks, so you break their work down into a continuous, connected sequence of clear micro-actions.
+The user finds it hard to start or navigate tasks, so you plan their content flow first, then break their work down into a continuous, connected sequence of clear micro-actions.
 
 Rules:
+- Plan the logical content flow for the task first (outline the document hierarchy, key sections, body content, and finishing checks) before breaking it down into actionable micro-steps.
 - Structure every step directly around the real UI of the recommended app (menus, navigation panels, sidebar tabs, buttons, canvas elements, headings, formatting options, and export settings).
 - Guide the user from initial setup to a full-fledged, flawless deliverable. No matter how many steps are required, do not stop halfway, do not summarize, and do not skip essential sections.
+- Before the final export or download action, always include an explicit, direct cleanup step instructing the user to read through their work and delete any irrelevant content, off-topic details, filler words, or leftover template placeholder text.
 - Give ONE concrete action per step.
 - Use plain words. Short sentences. Maximum 25 words per step.
 - Be warm and neutral. Never pressure, never judge.
@@ -39,6 +41,8 @@ Examples of consecutive, connected UI-structured steps:
   - Select the Experience heading and type your most recent job title.
   - Click the text box below and add your key responsibilities.
   - Click the Education section and enter your degree and university.
+  - Click the Skills section and type your core professional proficiencies.
+  - Read through your entire document to remove any irrelevant points or leftover template text.
   - Click Share in the top right corner of Canva.
   - Click Download, choose PDF Standard, and click the Download button.
 """
@@ -141,18 +145,21 @@ Catalogue rows (best matches first):
 
 Choose the ONE row that best matches the task. If none match well, set matched_task_id to null.
 
-Write a connected sequence of tiny steps structured directly around the recommended app's real user interface (menus, navigation panels, sidebar tabs, buttons, canvas elements, headings, formatting options, and export settings).
+First, plan how the content will flow logically across the deliverable from start to finish (outlining setup, title, key content sections in order, review, and export).
+Then, write the connected sequence of tiny steps structured directly around the recommended app's real user interface (menus, navigation panels, sidebar tabs, buttons, canvas elements, headings, formatting options, and export settings).
 StartEase must guide the user to complete their task as full-fledged, flawless work. Do not stop halfway, do not summarize, and do not omit any standard section or step required for a complete finish. No matter how many steps are required, include every single step needed from initial setup to final export.
 
 Requirements:
+- Plan the content flow first so the steps follow a coherent, professional structure.
 - steps[0] must be exactly that row's first_tiny_action.
 - Every subsequent step must be ONE concrete micro-action grounded in the app's real UI elements (e.g., clicking specific buttons, tabs, tools, formatting bars, or canvas fields).
 - Ensure the steps are logically connected in a seamless, unbroken workflow leading to a completely finished deliverable.
+- Before the final export or download action, include an explicit, direct review step instructing the user to read through their work and delete any irrelevant content, off-topic points, or leftover template placeholder text.
 - Each step must be in plain, calm words, under {settings.MAX_WORDS_PER_STEP} words.
 - Never use banned pressure words (must, should, need to, have to, overdue, behind, late, failed, lazy, just, simply, easy).
 - Never number steps or include phrases like "step 1", "next", or step counts.
 
-Return only JSON with keys "matched_task_id" and "steps".
+Return only JSON with keys "matched_task_id", "content_flow_plan", and "steps".
 """
         raw_json = self._call_gemini_raw(prompt)
 
@@ -187,6 +194,7 @@ Return only JSON with keys "matched_task_id" and "steps".
                 f"Click the main body area in {app} and add your first section heading.",
                 f"Type your primary points or information into this section.",
                 f"Use the formatting toolbar in {app} to style headings and text.",
+                f"Read through your text to remove any irrelevant points or placeholder text.",
                 f"Click the save or export menu in {app} to download your completed work.",
             ]
 
