@@ -31,7 +31,20 @@ export default function FloatPage() {
     const syncSession = () => {
       const saved = storage.getSession();
       if (saved) {
-        setSession(saved);
+        setSession((prev) => {
+          if (!prev) return saved;
+          if (
+            prev.session_id === saved.session_id &&
+            prev.step === saved.step &&
+            prev.status === saved.status &&
+            prev.explanation === saved.explanation &&
+            prev.variant === saved.variant &&
+            prev.app === saved.app
+          ) {
+            return prev;
+          }
+          return saved;
+        });
       }
     };
 
@@ -53,14 +66,17 @@ export default function FloatPage() {
     };
   }, []);
 
+  const sessionStatus = session?.status;
+  const sessionStep = session?.step;
+
   // Stagnation Detection: 3 minutes (180,000 ms) of idle on the active step
   useEffect(() => {
     lastActiveTimeRef.current = Date.now();
     setIsStagnant(false);
-  }, [session?.step, session?.status]);
+  }, [sessionStep, sessionStatus]);
 
   useEffect(() => {
-    if (!session || session.status !== "step") {
+    if (sessionStatus !== "step") {
       setIsStagnant(false);
       return;
     }
@@ -86,9 +102,9 @@ export default function FloatPage() {
       }
     };
 
-    const interval = setInterval(checkStagnation, 5000);
+    const interval = setInterval(checkStagnation, 2000);
     return () => clearInterval(interval);
-  }, [session, isStagnant, isLoading, transition]);
+  }, [sessionStatus, sessionStep, isStagnant, isLoading, transition]);
 
   // Track user input/pointer on the window to reset in-app idle timer
   useEffect(() => {

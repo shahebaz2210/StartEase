@@ -74,6 +74,41 @@ UNSUPPORTED_DOMAINS = [
     r"\blegal\s+advice\b",
 ]
 
+# Common student & academic term expansions to enrich sparse catalogue matches
+SYNONYM_EXPANSIONS: Dict[str, str] = {
+    # Academic writing & assignments
+    r"\bessays?\b": "research paper college assignment academic_writing",
+    r"\bhomeworks?\b": "assignment college_assignment study",
+    r"\bdissertations?\b": "research paper academic_writing thesis",
+    r"\bthes[ie]s\b": "research paper academic_writing",
+    r"\bliterature\s+reviews?\b": "research paper citations zotero",
+    r"\bproofreads?\b": "formal project report research paper",
+    r"\bparaphrase?\b": "college assignment research paper",
+    
+    # Presentations & Slides
+    r"\bslides?\b": "presentation technical academic ppt powerpoint",
+    r"\bdecks?\b": "presentation slides canva powerpoint",
+    r"\bpowerpoints?\b": "presentation technical academic ppt",
+    
+    # Design & Media
+    r"\bflyers?\b": "college event poster visual_design canva",
+    r"\bbanners?\b": "college event poster visual_design canva",
+    r"\bmockups?\b": "website app ui design figma",
+    r"\bwireframes?\b": "website app ui design figma",
+    
+    # Coding & Development
+    r"\bscripts?\b": "write edit code software_development vscode",
+    r"\bprograms?\b": "write edit code software_development vscode",
+    r"\bdebug(ging)?\b": "track fix software bugs github issues",
+    r"\bsql\b": "database schema design test dbdiagram",
+    
+    # Organization & Planning
+    r"\btodo\b": "organize personal tasks todoist",
+    r"\broutine\b": "organize personal tasks todoist",
+    r"\bflashcards?\b": "create class notes study organization onenote",
+    r"\brevision\b": "study organization notes xmind",
+}
+
 
 class VectorRetriever:
     def __init__(self, csv_path: Optional[Path] = None, similarity_threshold: float = 0.22):
@@ -161,7 +196,13 @@ class VectorRetriever:
             if re.search(pattern, clean_query, flags=re.IGNORECASE):
                 return [], 0.0
 
-        query_tokens = _tokenize(query)
+        # Expand common student synonyms for robust catalogue coverage
+        expanded_query = query
+        for pattern, expansion in SYNONYM_EXPANSIONS.items():
+            if re.search(pattern, clean_query, flags=re.IGNORECASE):
+                expanded_query += " " + expansion
+
+        query_tokens = _tokenize(expanded_query)
         if not query_tokens:
             return [], 0.0
 
