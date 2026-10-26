@@ -170,8 +170,16 @@ export default function Home() {
         updateSessionState(updatedSession);
         setCurrentScreen("step");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Done step error:", err);
+      if (err?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSessionState({ ...fresh, deadline: session.deadline });
+          setCurrentScreen("step");
+          return;
+        } catch {}
+      }
       setErrorMessage("Something went wrong on my side. Your progress is safe.");
       setCurrentScreen("error");
     }
@@ -191,8 +199,16 @@ export default function Home() {
       const updated = { ...session, ...res, variant: "simpler" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Confused error:", err);
+      if (err?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSessionState({ ...fresh, deadline: session.deadline });
+          setCurrentScreen("step");
+          return;
+        } catch {}
+      }
       setErrorMessage("Something went wrong on my side. Your progress is safe.");
       setCurrentScreen("error");
     }
@@ -212,8 +228,16 @@ export default function Home() {
       const updated = { ...session, ...res, variant: "smaller" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Too big error:", err);
+      if (err?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSessionState({ ...fresh, deadline: session.deadline });
+          setCurrentScreen("step");
+          return;
+        } catch {}
+      }
       setErrorMessage("Something went wrong on my side. Your progress is safe.");
       setCurrentScreen("error");
     }

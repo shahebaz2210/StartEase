@@ -173,6 +173,7 @@ def respond_to_step(
                 session_id=session.session_id,
                 status=StatusEnum.COMPLETE,
             )
+        session_manager.save()
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
@@ -191,6 +192,7 @@ def respond_to_step(
             session_manager.record_llm_call(session_id=session.session_id)
 
         session.replace_current_step(explanation, variant="explained")
+        session_manager.save()
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
@@ -212,6 +214,7 @@ def respond_to_step(
             session_manager.record_llm_call(session_id=session.session_id)
 
         session.insert_smaller_steps(smaller_steps)
+        session_manager.save()
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
@@ -222,6 +225,7 @@ def respond_to_step(
 
     elif user_resp == UserResponseEnum.NOT_NOW:
         session.status = "rest"
+        session_manager.save()
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.REST,
@@ -235,6 +239,7 @@ def respond_to_step(
         new_app, new_first_step = gemini_client.substitute_app(session.task, session.app_name or "", matches)
         session.app_name = new_app or "Plain Document"
         session.replace_current_step(new_first_step, variant="normal")
+        session_manager.save()
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
@@ -290,6 +295,7 @@ def resume_session(
     else:
         session.status = "step"
 
+    session_manager.save()
     return StepResponse(
         session_id=session.session_id,
         status=StatusEnum.STEP,

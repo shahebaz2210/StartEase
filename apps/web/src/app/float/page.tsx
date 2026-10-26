@@ -200,8 +200,14 @@ export default function FloatPage() {
     try {
       const res = await api.respond(session.session_id, "done");
       updateSession({ ...res, variant: "normal" });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSession(fresh);
+        } catch {}
+      }
     } finally {
       setIsLoading(false);
       setTransition(null);
@@ -218,8 +224,14 @@ export default function FloatPage() {
     try {
       const res = await api.respond(session.session_id, "confused");
       updateSession({ ...res, variant: "simpler" });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSession(fresh);
+        } catch {}
+      }
     } finally {
       setIsLoading(false);
       setTransition(null);
@@ -236,8 +248,14 @@ export default function FloatPage() {
     try {
       const res = await api.respond(session.session_id, "too_big");
       updateSession({ ...res, variant: "smaller" });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSession(fresh);
+        } catch {}
+      }
     } finally {
       setIsLoading(false);
       setTransition(null);

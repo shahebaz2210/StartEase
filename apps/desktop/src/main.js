@@ -1,11 +1,45 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, protocol, screen, powerMonitor } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const http = require("http");
+const { spawn } = require("child_process");
 
 let fullWindow = null;
 let floatWindow = null;
 let tray = null;
 let isFloatMode = false;
+let backendProcess = null;
+
+function ensureBackendRunning() {
+  const req = http.get("http://127.0.0.1:8000/docs", () => {
+    console.log("FastAPI backend is already active on http://127.0.0.1:8000");
+  });
+
+  req.on("error", () => {
+    console.log("FastAPI backend not detected, launching background process...");
+    const apiDir = path.join(__dirname, "../../api");
+    const venvPython = path.join(apiDir, ".venv/Scripts/python.exe");
+    const pythonCmd = fs.existsSync(venvPython) ? venvPython : "python";
+
+    try {
+      backendProcess = spawn(
+        pythonCmd,
+        ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+        {
+          cwd: apiDir,
+          stdio: "ignore",
+          windowsHide: true,
+        }
+      );
+
+      backendProcess.on("error", (err) => {
+        console.warn("Could not automatically spawn backend:", err);
+      });
+    } catch (e) {
+      console.warn("Exception spawning backend:", e);
+    }
+  });
+}
 
 // Path to static web export
 const WEB_OUT_DIR = path.join(__dirname, "../../web/out");
@@ -298,6 +332,7 @@ app.whenReady().then(() => {
     return require("electron").net.fetch(`file://${filePath}`);
   });
 
+  ensureBackendRunning();
   createFullWindow();
   fullWindow.show();
   createTray();
@@ -392,5 +427,13 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
+  }
+});
+
+app.on("will-quit", () => {
+  if (backendProcess && !backendProcess.killed) {
+    try {
+      backendProcess.kill();
+    } catch {}
   }
 });

@@ -1,7 +1,14 @@
+import json
+import logging
+import os
 import time
 import uuid
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
+from app.config import settings
+
+logger = logging.getLogger("startease.session_manager")
 
 
 class SessionData(BaseModel):
@@ -68,6 +75,30 @@ class SessionManager:
         self._sessions: Dict[str, SessionData] = {}
         self._daily_calls = 0
         self._last_day = time.strftime("%Y-%m-%d")
+        self._storage_file = settings.DATA_DIR / "sessions.json"
+        self._load_sessions()
+
+    def _load_sessions(self):
+        if not self._storage_file.exists():
+            return
+        try:
+            with open(self._storage_file, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            for sid, sdata in raw.items():
+                self._sessions[sid] = SessionData(**sdata)
+            self.cleanup_expired()
+            logger.info(f"Loaded {len(self._sessions)} active sessions from disk.")
+        except Exception as e:
+            logger.warning(f"Could not load sessions from disk: {e}")
+
+    def save(self):
+        try:
+            os.makedirs(self._storage_file.parent, exist_ok=True)
+            data = {sid: s.model_dump() for sid, s in self._sessions.items()}
+            with open(self._storage_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Could not persist sessions to disk: {e}")
 
     def _check_and_reset_daily(self):
         current_day = time.strftime("%Y-%m-%d")
@@ -90,6 +121,7 @@ class SessionManager:
         if session_id and session_id in self._sessions:
             self._sessions[session_id].llm_call_count += 1
             self._sessions[session_id].updated_at = time.time()
+            self.save()
 
     def create_session(
         self,
@@ -113,6 +145,7 @@ class SessionManager:
             variant="normal",
         )
         self._sessions[session_id] = session
+        self.save()
         return session
 
     def get_session(self, session_id: str) -> Optional[SessionData]:
@@ -122,6 +155,7 @@ class SessionManager:
     def delete_session(self, session_id: str) -> bool:
         if session_id in self._sessions:
             del self._sessions[session_id]
+            self.save()
             return True
         return False
 
@@ -130,6 +164,8 @@ class SessionManager:
         expired = [sid for sid, s in self._sessions.items() if (now - s.updated_at) > self.ttl_seconds]
         for sid in expired:
             del self._sessions[sid]
+        if expired:
+            self.save()
         return len(expired)
 
 
