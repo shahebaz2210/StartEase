@@ -482,11 +482,11 @@ export default function FloatPage() {
                   <div className="flex items-center gap-1.5 text-[#2D5A3D]">
                     <Sprout className="w-4 h-4 shrink-0 text-[#2D5A3D]" />
                     <p className="font-serif-title text-xs font-bold text-[#1A3323]">
-                      Still on this step, or take a rest?
+                      Working on this, or do it later?
                     </p>
                   </div>
                   <p className="text-[11px] text-[#5A7764] leading-relaxed">
-                    No rush at all. You can keep going or step away with zero guilt.
+                    No rush at all. Keep going whenever you're ready, or set it aside for later.
                   </p>
                   <div className="flex gap-2 pt-0.5">
                     <button
@@ -497,7 +497,7 @@ export default function FloatPage() {
                       className="flex-1 py-2 px-2.5 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Play className="w-3 h-3 fill-white" />
-                      <span>Still on it</span>
+                      <span>Working on it</span>
                     </button>
                     <button
                       onClick={() => {
@@ -507,7 +507,7 @@ export default function FloatPage() {
                       className="flex-1 py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Pause className="w-3 h-3 text-[#2D5A3D]" />
-                      <span>Take a rest</span>
+                      <span>Will do it later</span>
                     </button>
                   </div>
                 </div>

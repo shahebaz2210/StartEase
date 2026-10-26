@@ -218,8 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-<<<<<<< HEAD
-=======
 
 # Environment variables and secrets (Never commit secrets!)
 .env
@@ -240,4 +238,5 @@ out/
 dist/
 release/
 
->>>>>>> a0a2ea6 (feat: StartEase initial release - adaptive task initiation companion (API, Web, Desktop))
+# StartEase local session persistence
+data/sessions.json
