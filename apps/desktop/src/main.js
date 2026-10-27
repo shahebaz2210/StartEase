@@ -19,7 +19,8 @@ function ensureBackendRunning() {
     console.log("FastAPI backend not detected, launching background process...");
     const apiDir = path.join(__dirname, "../../api");
     const venvPython = path.join(apiDir, ".venv/Scripts/python.exe");
-    const pythonCmd = fs.existsSync(venvPython) ? venvPython : "python";
+    const venvUvicorn = path.join(apiDir, ".venv/Scripts/uvicorn.exe");
+    const pythonCmd = (fs.existsSync(venvPython) && fs.existsSync(venvUvicorn)) ? venvPython : "python";
 
     try {
       backendProcess = spawn(
