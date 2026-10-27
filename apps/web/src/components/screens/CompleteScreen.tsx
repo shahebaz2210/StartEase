@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
-import { Sparkles, ArrowRight, Heart } from "lucide-react";
+import React, { useEffect } from "react";
+import { Sparkles, ArrowRight, Heart, Pause, Play } from "lucide-react";
 
 interface CompleteScreenProps {
   onStartNewTask: () => void;
+  onNotNow?: () => void;
   hasMoreTasks?: boolean;
   nextTaskTitle?: string | null;
   onStartNextQueuedTask?: () => void;
@@ -13,11 +14,44 @@ interface CompleteScreenProps {
 
 export function CompleteScreen({
   onStartNewTask,
+  onNotNow,
   hasMoreTasks,
   nextTaskTitle,
   onStartNextQueuedTask,
   onRestOrLater,
 }: CompleteScreenProps) {
+  const handleRest = onNotNow || onRestOrLater || onStartNewTask;
+
+  // Keyboard shortcut: Space for Not now, 1 for start
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === "1") {
+        e.preventDefault();
+        if (hasMoreTasks && nextTaskTitle && onStartNextQueuedTask) {
+          onStartNextQueuedTask();
+        } else {
+          onStartNewTask();
+        }
+      } else if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handleRest();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasMoreTasks, nextTaskTitle, onStartNextQueuedTask, onStartNewTask, handleRest]);
+
   return (
     <div className="min-h-[75vh] flex items-center justify-center p-4">
       <div className="w-full max-w-lg startease-card p-10 text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
@@ -35,7 +69,7 @@ export function CompleteScreen({
         </div>
 
         {hasMoreTasks && nextTaskTitle ? (
-          <div className="bg-[#EFF7F1] border border-[#C5DDCB] rounded-2xl p-5 space-y-4 text-left">
+          <div className="bg-[#EFF7F1] border border-[#C5DDCB] rounded-2xl p-5 space-y-3.5 text-left">
             <div className="space-y-1 text-center">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-[#2D5A3D]">
                 Whenever you feel ready, next up:
@@ -44,36 +78,37 @@ export function CompleteScreen({
                 {nextTaskTitle}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={onStartNextQueuedTask}
-                className="flex-1 py-3 px-4 rounded-xl btn-primary-dark font-medium text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-              >
-                <span>Start this task</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={onRestOrLater || onStartNewTask}
-                className="flex-1 py-3 px-4 rounded-xl btn-sage-medium font-medium text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>Take a rest for now</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="pt-2">
             <button
               type="button"
-              onClick={onStartNewTask}
-              className="w-full py-3.5 px-5 rounded-xl btn-primary-dark font-medium text-sm flex items-center justify-center gap-2 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40"
+              onClick={onStartNextQueuedTask}
+              className="w-full py-3 px-4 rounded-xl btn-primary-dark font-medium text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
-              <span>Start a new task</span>
-              <ArrowRight className="w-4 h-4" />
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Start this task</span>
             </button>
           </div>
-        )}
+        ) : null}
+
+        {/* Core two buttons similarly as core */}
+        <div className="space-y-3 pt-2">
+          <button
+            type="button"
+            onClick={onStartNewTask}
+            className="w-full h-[50px] px-5 rounded-xl btn-primary-dark font-medium text-sm flex items-center justify-center gap-2 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer"
+          >
+            <span>Start a new task</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRest}
+            className="w-full h-[46px] px-4 rounded-xl bg-[#E7F3EB] hover:bg-[#DBEDE1] text-[#234930] font-medium text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Pause className="w-3.5 h-3.5 text-[#5A7764]" />
+            <span>Not now • Pause and rest without losing progress</span>
+          </button>
+        </div>
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-[#718779] pt-2">
           <Heart className="w-3.5 h-3.5 text-[#2D5A3D]" />
@@ -83,3 +118,4 @@ export function CompleteScreen({
     </div>
   );
 }
+

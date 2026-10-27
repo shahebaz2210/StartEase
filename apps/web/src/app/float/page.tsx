@@ -282,6 +282,14 @@ export default function FloatPage() {
     }, 1800);
   };
 
+  const handleStartNewTask = () => {
+    storage.clearSession();
+    setSession(null);
+    if (typeof window !== "undefined" && (window as any).electronApi?.openMainWindow) {
+      (window as any).electronApi.openMainWindow();
+    }
+  };
+
   const handleStartNextTask = async () => {
     if (!session || isLoading) return;
     setIsLoading(true);
@@ -481,8 +489,8 @@ export default function FloatPage() {
                   </p>
                 )}
               </div>
-              {session.has_more_tasks ? (
-                <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1">
+                {session.has_more_tasks ? (
                   <button
                     onClick={handleStartNextTask}
                     className="flex-1 py-2 px-3 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
@@ -490,14 +498,22 @@ export default function FloatPage() {
                     <Play className="w-3 h-3 fill-white" />
                     <span>Start next task</span>
                   </button>
+                ) : (
                   <button
-                    onClick={handleNotNow}
-                    className="flex-1 py-2 px-3 rounded-lg btn-sage-medium text-xs font-medium cursor-pointer"
+                    onClick={handleStartNewTask}
+                    className="flex-1 py-2 px-3 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    Will do it later
+                    <span>Start a new task</span>
                   </button>
-                </div>
-              ) : null}
+                )}
+                <button
+                  onClick={handleNotNow}
+                  className="flex-1 py-2 px-3 rounded-lg bg-[#E7F3EB] hover:bg-[#DBEDE1] text-[#234930] text-xs font-medium flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Pause className="w-3 h-3 text-[#5A7764]" />
+                  <span>Not now</span>
+                </button>
+              </div>
             </div>
           ) : !session || !session.step ? (
             <div className="text-center py-6 space-y-2">

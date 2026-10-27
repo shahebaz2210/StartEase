@@ -545,10 +545,33 @@ export default function Home() {
             hasMoreTasks={session?.has_more_tasks}
             nextTaskTitle={session?.next_task_title}
             onStartNextQueuedTask={handleStartNextTask}
+            onNotNow={() => {
+              if (session) {
+                const restSession: SessionData = {
+                  ...session,
+                  status: "rest" as const,
+                  step: session.next_task_title || "You completed your task. Take a calm rest.",
+                };
+                updateSessionState(restSession);
+                setCurrentScreen("rest");
+              } else {
+                setCurrentScreen("decompose");
+                setActiveTab("decompose");
+              }
+            }}
             onRestOrLater={() => {
-              updateSessionState(null);
-              setCurrentScreen("decompose");
-              setActiveTab("decompose");
+              if (session) {
+                const restSession: SessionData = {
+                  ...session,
+                  status: "rest" as const,
+                  step: session.next_task_title || "You completed your task. Take a calm rest.",
+                };
+                updateSessionState(restSession);
+                setCurrentScreen("rest");
+              } else {
+                setCurrentScreen("decompose");
+                setActiveTab("decompose");
+              }
             }}
             onStartNewTask={() => {
               updateSessionState(null);
