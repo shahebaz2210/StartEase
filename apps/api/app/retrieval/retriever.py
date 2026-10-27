@@ -101,6 +101,7 @@ SYNONYM_EXPANSIONS: Dict[str, str] = {
     r"\bprograms?\b": "write edit code software_development vscode",
     r"\bdebug(ging)?\b": "track fix software bugs github issues",
     r"\bsql\b": "database schema design test dbdiagram",
+    r"\b(fast\s*api|backend|servers?|rest\s*api)\b": "write edit code software_development vscode test api endpoints",
     
     # Organization & Planning
     r"\btodo\b": "organize personal tasks todoist",
@@ -121,6 +122,16 @@ class VectorRetriever:
         self.idf: Dict[str, float] = {}
         self.is_indexed = False
         self.load_and_index()
+
+    def is_unsupported_domain(self, query: str) -> bool:
+        """Checks if the query is in explicitly unsupported domains (taxes, medical, legal, etc.)."""
+        if not query or not query.strip():
+            return False
+        clean_query = query.strip().lower()
+        for pattern in UNSUPPORTED_DOMAINS:
+            if re.search(pattern, clean_query, flags=re.IGNORECASE):
+                return True
+        return False
 
     def load_and_index(self):
         """Loads data/knowledge_base.csv (utf-8-sig) and builds the vector index."""

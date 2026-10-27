@@ -97,39 +97,59 @@ def create_session(request: CreateSessionRequest):
             ).model_dump(),
         )
 
-    # 3. Vector Retrieval over 50-row catalogue
-    matches, score = retriever.retrieve(task, top_k=settings.TOP_K)
-    if not matches:
-        logger.info("No catalogue match found above similarity threshold.")
+    # 3. Check for explicitly unsupported domain (taxes, legal, medical, etc.)
+    if retriever.is_unsupported_domain(task):
+        logger.info("Task matches explicitly unsupported domain. Returning no-match.")
         return StepResponse(
             status=StatusEnum.NO_MATCH,
             step=NO_MATCH_MESSAGE,
         )
 
-    # 4. LLM Generation
-    matched_task_id, app_name, steps = gemini_client.generate_task_steps(task, matches)
+    # 4. Vector Retrieval over 50-row catalogue
+    matches, score = retriever.retrieve(task, top_k=settings.TOP_K)
+    if matches:
+        matched_task_id, app_name, steps = gemini_client.generate_task_steps(task, matches)
+        session_manager.record_llm_call()
+
+        if matched_task_id is not None and steps:
+            matched_row = retriever.id_to_row.get(matched_task_id)
+            app_reason = matched_row.reason if matched_row else f"Recommended tool for this task."
+            session = session_manager.create_session(
+                task=task,
+                matched_task_id=matched_task_id,
+                app_name=app_name,
+                app_reason=app_reason,
+                steps=steps,
+            )
+            logger.info("Session created from catalogue match. Returning step 1.")
+            return StepResponse(
+                session_id=session.session_id,
+                status=StatusEnum.STEP,
+                step=session.current_step,
+                app=App(name=session.app_name, reason=session.app_reason),
+                variant=VariantEnum.NORMAL,
+            )
+
+    # 5. Direct LLM Fallback for uncatalogued tasks (when cosine < threshold)
+    logger.info("No catalogue match above threshold. Falling back to open-ended LLM decomposition.")
+    app_name, app_reason, steps = gemini_client.generate_open_ended_task_steps(task)
     session_manager.record_llm_call()
 
-    if matched_task_id is None or not steps:
+    if not steps or not app_name:
         return StepResponse(
             status=StatusEnum.NO_MATCH,
             step=NO_MATCH_MESSAGE,
         )
 
-    # 5. Look up catalogue reason for the matched row
-    matched_row = retriever.id_to_row.get(matched_task_id)
-    app_reason = matched_row.reason if matched_row else f"Recommended tool for this task."
-
-    # 6. Store step sequence on server
     session = session_manager.create_session(
         task=task,
-        matched_task_id=matched_task_id,
+        matched_task_id=None,
         app_name=app_name,
-        app_reason=app_reason,
+        app_reason=app_reason or f"Recommended tool for {task}.",
         steps=steps,
     )
 
-    logger.info("Session created successfully. Returning step 1.")
+    logger.info("Session created via open-ended LLM fallback. Returning step 1.")
     return StepResponse(
         session_id=session.session_id,
         status=StatusEnum.STEP,
