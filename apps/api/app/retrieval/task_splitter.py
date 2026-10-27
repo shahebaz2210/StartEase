@@ -2,7 +2,7 @@ import re
 from typing import List
 
 
-ACTION_VERBS = r"(?:build|create|make|write|prepare|design|edit|analyze|format|clean|code|test|run|manage|find|track|set\s*up|organize|conduct|draft|develop|solve|calculate|read|review|study|practice|submit|send|generate|draw|sketch|install|deploy)"
+ACTION_VERBS = r"(?:build|create|make|write|prepare|design|edit|analyze|format|clean|code|test|run|manage|find|track|set\s*up|organize|conduct|draft|develop|solve|calculate|read|review|study|practice|submit|send|generate|draw|sketch|install|deploy|meet|google\s+meet|zoom|schedule|host|attend|record|film|shoot|post|upload|reel|call|present)"
 FILLER = r"(?:(?:i\s+)?(?:want|need|have|would\s+like)\s+to\s+|(?:also|next|later)\s+)*"
 
 
@@ -52,7 +52,7 @@ def split_tasks(raw_input: str) -> List[str]:
             re.sub(r"^(?:(?:i\s+)?(?:want|need|have|would\s+like)\s+to\s+|(?:also|next|later)\s+)+", "", p, flags=re.IGNORECASE).strip()
             for p in parts
         ]
-        cleaned_parts = [p for p in cleaned_parts if len(p.split()) >= 2]
+        cleaned_parts = [p for p in cleaned_parts if len(p) >= 3]
         if len(cleaned_parts) > 1:
             return cleaned_parts
 

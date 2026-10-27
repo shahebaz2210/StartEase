@@ -69,36 +69,37 @@ export function CompleteScreen({
         </div>
 
         {hasMoreTasks && nextTaskTitle ? (
-          <div className="bg-[#EFF7F1] border border-[#C5DDCB] rounded-2xl p-5 space-y-3.5 text-left">
-            <div className="space-y-1 text-center">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-[#2D5A3D]">
-                Whenever you feel ready, next up:
-              </span>
-              <p className="font-serif-title text-base font-bold text-[#1A3323]">
-                {nextTaskTitle}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onStartNextQueuedTask}
-              className="w-full py-3 px-4 rounded-xl btn-primary-dark font-medium text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Start this task</span>
-            </button>
+          <div className="bg-[#EFF7F1] border border-[#C5DDCB] rounded-2xl p-5 space-y-1.5 text-center">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#2D5A3D]">
+              Whenever you feel ready, next up:
+            </span>
+            <p className="font-serif-title text-base font-bold text-[#1A3323]">
+              {nextTaskTitle}
+            </p>
           </div>
         ) : null}
 
-        {/* Core two buttons similarly as core */}
+        {/* Action buttons: exactly two buttons matching core style */}
         <div className="space-y-3 pt-2">
-          <button
-            type="button"
-            onClick={onStartNewTask}
-            className="w-full h-[50px] px-5 rounded-xl btn-primary-dark font-medium text-sm flex items-center justify-center gap-2 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer"
-          >
-            <span>Start a new task</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {hasMoreTasks && nextTaskTitle ? (
+            <button
+              type="button"
+              onClick={onStartNextQueuedTask}
+              className="w-full h-[50px] px-5 rounded-xl btn-primary-dark font-medium text-sm flex items-center justify-center gap-2 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>Start this task</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartNewTask}
+              className="w-full h-[50px] px-5 rounded-xl btn-primary-dark font-medium text-sm flex items-center justify-center gap-2 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer"
+            >
+              <span>Start a new task</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
 
           <button
             type="button"
