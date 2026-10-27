@@ -157,6 +157,7 @@ export default function Home() {
       const data = await api.createSession(task);
       const enriched: SessionData = {
         ...data,
+        task: data.task || task,
         deadline: deadline,
       };
 
@@ -196,12 +197,22 @@ export default function Home() {
 
     try {
       const res = await api.respond(session.session_id, "done");
-      if (res.status === "completed") {
-        const completedSession = { ...session, ...res, status: "completed" as const };
+      if (res.status === "completed" || res.status === "complete") {
+        const completedSession = {
+          ...session,
+          ...res,
+          task: res.task || session.task,
+          status: "completed" as const,
+        };
         updateSessionState(completedSession);
         setCurrentScreen("complete");
       } else {
-        const updatedSession = { ...session, ...res, variant: "normal" as const };
+        const updatedSession = {
+          ...session,
+          ...res,
+          task: res.task || session.task,
+          variant: "normal" as const,
+        };
         updateSessionState(updatedSession);
         setCurrentScreen("step");
       }
@@ -336,7 +347,7 @@ export default function Home() {
       const updated: SessionData = {
         ...session,
         ...res,
-        task: nextTitle || session.task,
+        task: res.task || nextTitle || session.task,
         status: "step" as const,
         variant: "normal" as const,
       };

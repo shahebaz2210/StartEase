@@ -47,6 +47,7 @@ class App(BaseModel):
 class StepResponse(BaseModel):
     session_id: Optional[str] = Field(None, description="Opaque session identifier")
     status: StatusEnum = Field(..., description="Current interaction status")
+    task: Optional[str] = Field(None, description="Active task title")
     step: Optional[str] = Field(None, description="The single current step to display")
     app: Optional[App] = Field(None, description="Recommended application")
     variant: Optional[VariantEnum] = Field(None, description="Variant label indicator (normal, explained, smaller, simpler)")

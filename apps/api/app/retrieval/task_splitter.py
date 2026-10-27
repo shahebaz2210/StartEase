@@ -2,6 +2,10 @@ import re
 from typing import List
 
 
+ACTION_VERBS = r"(?:build|create|make|write|prepare|design|edit|analyze|format|clean|code|test|run|manage|find|track|set\s*up|organize|conduct|draft|develop|solve|calculate|read|review|study|practice|submit|send|generate|draw|sketch|install|deploy)"
+FILLER = r"(?:(?:i\s+)?(?:want|need|have|would\s+like)\s+to\s+|(?:also|next|later)\s+)*"
+
+
 def split_tasks(raw_input: str) -> List[str]:
     """Splits a multi-task brain-dump into discrete, ordered tasks.
 
@@ -10,7 +14,8 @@ def split_tasks(raw_input: str) -> List[str]:
     - Numbered lists (1. ..., 2. ...)
     - Bullet points (- ..., * ...)
     - Semicolons (;)
-    - Sequential conjunctions (', then ', ' then ', ', and then ', ' and then ', ' after that ')
+    - Sequential conjunctions (then, and then, after that, next)
+    - Action verb boundaries (, and <verb>, , <verb>, and <verb>, with optional fillers)
     """
     if not raw_input or not raw_input.strip():
         return []
@@ -39,10 +44,17 @@ def split_tasks(raw_input: str) -> List[str]:
     if len(numbered_parts) > 1:
         return numbered_parts
 
-    # 4. Check for sequential conjunctions: 'then', 'and then', 'after that'
-    conjunction_pattern = r"(?:,\s*(?:and\s+)?then\s+|\s+and\s+then\s+|\s+then\s+|,\s*after\s+that\s+|\s+after\s+that\s+)"
-    parts = [p.strip() for p in re.split(conjunction_pattern, text, flags=re.IGNORECASE) if p.strip()]
-    if len(parts) > 1 and all(len(p.split()) >= 2 for p in parts):
-        return parts
+    # 4. Sequential conjunctions or action-verb boundaries (accounting for conversational fillers)
+    pattern = rf"(?:,\s*(?:and\s+)?(?:then|after\s+that|afterwards|next)\s+|\s+(?:and\s+)?(?:then|after\s+that|afterwards)\s+|,\s*(?:and\s+)?(?={FILLER}{ACTION_VERBS}\b)|\s+(?:and|plus)\s+(?={FILLER}{ACTION_VERBS}\b))"
+    parts = [p.strip() for p in re.split(pattern, text, flags=re.IGNORECASE) if p.strip()]
+    if len(parts) > 1:
+        cleaned_parts = [
+            re.sub(r"^(?:(?:i\s+)?(?:want|need|have|would\s+like)\s+to\s+|(?:also|next|later)\s+)+", "", p, flags=re.IGNORECASE).strip()
+            for p in parts
+        ]
+        cleaned_parts = [p for p in cleaned_parts if len(p.split()) >= 2]
+        if len(cleaned_parts) > 1:
+            return cleaned_parts
 
     return [text]
+

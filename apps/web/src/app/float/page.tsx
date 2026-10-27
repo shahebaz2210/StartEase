@@ -209,7 +209,13 @@ export default function FloatPage() {
     });
     try {
       const res = await api.respond(session.session_id, "done");
-      updateSession({ ...res, variant: "normal" });
+      const normalizedStatus = (res.status === "complete" || res.status === "completed") ? "completed" : res.status;
+      updateSession({
+        ...res,
+        task: res.task || session.task,
+        status: normalizedStatus,
+        variant: "normal",
+      });
     } catch (e: any) {
       console.error(e);
       if (e?.status === 404 && session?.task) {
@@ -288,7 +294,7 @@ export default function FloatPage() {
       const res = await api.nextTask(session.session_id);
       updateSession({
         ...res,
-        task: nextTitle || session.task,
+        task: res.task || nextTitle || session.task,
         status: "step",
         variant: "normal",
       });
@@ -462,14 +468,7 @@ export default function FloatPage() {
                 </p>
               </div>
             </div>
-          ) : !session || !session.step ? (
-            <div className="text-center py-6 space-y-2">
-              <p className="text-xs font-medium text-[#1A3323]">Nothing in progress.</p>
-              <p className="text-[11px] text-[#718779]">
-                Start a task in the main window to follow along here.
-              </p>
-            </div>
-          ) : session.status === "completed" ? (
+          ) : (session && (session.status === "completed" || session.status === "complete")) ? (
             <div className="text-center py-5 space-y-3">
               <CheckCircle2 className="w-8 h-8 text-[#2D5A3D] mx-auto" />
               <div className="space-y-1">
@@ -499,6 +498,13 @@ export default function FloatPage() {
                   </button>
                 </div>
               ) : null}
+            </div>
+          ) : !session || !session.step ? (
+            <div className="text-center py-6 space-y-2">
+              <p className="text-xs font-medium text-[#1A3323]">Nothing in progress.</p>
+              <p className="text-[11px] text-[#718779]">
+                Start a task in the main window to follow along here.
+              </p>
             </div>
           ) : session.status === "rest" ? (
             <div className="space-y-3 text-center py-2">

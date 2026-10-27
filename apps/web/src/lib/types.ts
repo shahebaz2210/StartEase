@@ -8,13 +8,15 @@ export interface SessionApp {
 export interface SessionData {
   session_id: string;
   task: string;
-  status: "step" | "completed" | "rest" | "crisis" | "no_match" | "error";
+  status: "step" | "completed" | "complete" | "rest" | "crisis" | "no_match" | "error";
   current_step?: string;
   step?: string;
   explanation?: string;
   app?: SessionApp;
   variant?: StepVariant;
   deadline?: string | null;
+  has_more_tasks?: boolean;
+  next_task_title?: string | null;
   timestamp?: number;
 }
 

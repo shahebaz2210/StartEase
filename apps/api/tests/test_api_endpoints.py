@@ -207,3 +207,17 @@ def test_multi_task_queue_and_next_task():
     assert next_data["status"] == "step"
     assert next_data["app"]["name"] == "Postman"
     assert next_data["has_more_tasks"] is False
+
+
+def test_user_comma_multi_task_queries():
+    # User's exact input: comma separated without 'then'
+    query = "want to build resume on data analyst job role, build presentation on data analysis"
+    create_res = client.post("/v1/sessions", json={"task": query})
+    assert create_res.status_code == 200
+    data = create_res.json()
+
+    assert data["status"] == "step"
+    assert "resume" in data["task"].lower()
+    assert data["has_more_tasks"] is True
+    assert "presentation" in data["next_task_title"].lower()
+

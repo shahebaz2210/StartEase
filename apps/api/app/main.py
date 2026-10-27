@@ -167,6 +167,7 @@ def create_session(request: CreateSessionRequest):
     return StepResponse(
         session_id=session.session_id,
         status=StatusEnum.STEP,
+        task=session.task,
         step=session.current_step,
         app=App(name=session.app_name, reason=session.app_reason),
         variant=VariantEnum.NORMAL,
@@ -209,12 +210,14 @@ def respond_to_step(
             return StepResponse(
                 session_id=session.session_id,
                 status=StatusEnum.COMPLETE,
+                task=session.task,
                 has_more_tasks=session.has_more_tasks,
                 next_task_title=session.next_task_title,
             )
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
+            task=session.task,
             step=session.current_step,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum.NORMAL,
@@ -239,9 +242,12 @@ def respond_to_step(
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
+            task=session.task,
             step=session.current_step,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum.SIMPLER,
+            has_more_tasks=session.has_more_tasks,
+            next_task_title=session.next_task_title,
         )
 
     elif user_resp == UserResponseEnum.CONFUSED:
@@ -258,9 +264,12 @@ def respond_to_step(
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
+            task=session.task,
             step=explanation,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum.EXPLAINED,
+            has_more_tasks=session.has_more_tasks,
+            next_task_title=session.next_task_title,
         )
 
     elif user_resp == UserResponseEnum.TOO_BIG:
@@ -280,9 +289,12 @@ def respond_to_step(
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
+            task=session.task,
             step=session.current_step,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum.SMALLER,
+            has_more_tasks=session.has_more_tasks,
+            next_task_title=session.next_task_title,
         )
 
     elif user_resp == UserResponseEnum.NOT_NOW:
@@ -291,9 +303,12 @@ def respond_to_step(
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.REST,
+            task=session.task,
             step=session.current_step,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum(session.variant) if session.variant in ["normal", "explained", "smaller"] else None,
+            has_more_tasks=session.has_more_tasks,
+            next_task_title=session.next_task_title,
         )
 
     elif user_resp == UserResponseEnum.CANT_USE_APP:
@@ -305,9 +320,12 @@ def respond_to_step(
         return StepResponse(
             session_id=session.session_id,
             status=StatusEnum.STEP,
+            task=session.task,
             step=new_first_step,
             app=App(name=session.app_name, reason=session.app_reason),
             variant=VariantEnum.NORMAL,
+            has_more_tasks=session.has_more_tasks,
+            next_task_title=session.next_task_title,
         )
 
     return JSONResponse(
@@ -361,6 +379,7 @@ def resume_session(
     return StepResponse(
         session_id=session.session_id,
         status=StatusEnum.STEP,
+        task=session.task,
         step=session.current_step,
         app=App(name=session.app_name, reason=session.app_reason),
         variant=VariantEnum(session.variant) if session.variant in ["normal", "explained", "smaller"] else VariantEnum.NORMAL,
@@ -423,6 +442,7 @@ def start_next_task(
     return StepResponse(
         session_id=session.session_id,
         status=StatusEnum.STEP,
+        task=session.task,
         step=session.current_step,
         app=App(name=session.app_name, reason=session.app_reason),
         variant=VariantEnum.NORMAL,

@@ -78,6 +78,12 @@ export const api = {
     });
   },
 
+  async nextTask(sessionId: string): Promise<any> {
+    return request(`/v1/sessions/${encodeURIComponent(sessionId)}/next-task`, {
+      method: "POST",
+    });
+  },
+
   async deleteSession(sessionId: string): Promise<void> {
     try {
       await request(`/v1/sessions/${encodeURIComponent(sessionId)}`, {
