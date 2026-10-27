@@ -266,6 +266,43 @@ Return JSON: {{"steps": ["...", "..."]}}
             f"Click into the search bar or create new button in {app}.",
         ]
 
+    def make_step_simpler(
+        self,
+        current_step: str,
+        task: str,
+        app: str,
+    ) -> List[str]:
+        """Combines simplification and micro-decomposition: returns 2 tiny, plain micro-steps."""
+        prompt = f"""The user is stuck on this step: "{current_step}" (task: "{task}", app: {app}).
+Make this step simpler and smaller. Replace it with two very small micro-steps.
+Rules:
+1. Use simple, conversational language without technical jargon.
+2. Point to the exact visual location on screen (e.g. top-left corner, search bar).
+3. The first micro-step must be an effortless single action (e.g. looking at an area or clicking one button), under {settings.MAX_WORDS_PER_STEP} words.
+4. Zero pressure words (no must, should, need to, have to).
+Return JSON: {{"steps": ["...", "..."]}}
+"""
+        raw_json = self._call_gemini_raw(prompt)
+        if raw_json:
+            try:
+                parsed = json.loads(raw_json)
+                steps = parsed.get("steps", [])
+                if isinstance(steps, list) and len(steps) >= 2:
+                    s1 = clean_step_text(steps[0])
+                    s2 = clean_step_text(steps[1])
+                    ok1, _ = validate_step(s1, max_words=settings.MAX_WORDS_PER_STEP)
+                    ok2, _ = validate_step(s2, max_words=settings.MAX_WORDS_PER_STEP)
+                    if ok1 and ok2:
+                        return [s1, s2]
+            except Exception as e:
+                logger.warning(f"Failed to parse simpler step: {e}")
+
+        # Safe fallback
+        return [
+            f"Look at {app} on your screen and find the search or main menu.",
+            f"Click into the search bar or create new button in {app}.",
+        ]
+
     def substitute_app(
         self,
         task: str,

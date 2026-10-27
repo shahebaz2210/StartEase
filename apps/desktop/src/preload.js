@@ -14,4 +14,7 @@ contextBridge.exposeInMainWorld("electronApi", {
     ipcRenderer.on("sync-session", () => callback());
   },
   getSystemIdleTime: () => ipcRenderer.invoke("get-system-idle-time"),
+  glideToCenter: () => ipcRenderer.send("glide-to-center"),
+  glideToCorner: () => ipcRenderer.send("glide-to-corner"),
+  closeFloatWithFade: () => ipcRenderer.send("close-float-fade"),
 });

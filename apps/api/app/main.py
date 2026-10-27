@@ -182,6 +182,28 @@ def respond_to_step(
             variant=VariantEnum.NORMAL,
         )
 
+    elif user_resp == UserResponseEnum.SIMPLER_STEP:
+        if not session_manager.can_make_llm_call(session_id=session.session_id):
+            smaller_steps = [
+                f"Open {session.app_name} and wait for the screen to load.",
+                f"Take one calm look at the options in {session.app_name}.",
+            ]
+        else:
+            smaller_steps = gemini_client.make_step_simpler(
+                session.current_step or "", session.task, session.app_name or ""
+            )
+            session_manager.record_llm_call(session_id=session.session_id)
+
+        session.insert_smaller_steps(smaller_steps)
+        session_manager.save()
+        return StepResponse(
+            session_id=session.session_id,
+            status=StatusEnum.STEP,
+            step=session.current_step,
+            app=App(name=session.app_name, reason=session.app_reason),
+            variant=VariantEnum.SIMPLER,
+        )
+
     elif user_resp == UserResponseEnum.CONFUSED:
         if not session_manager.can_make_llm_call(session_id=session.session_id):
             explanation = f"Open {session.app_name} on your device and locate the search or create option."

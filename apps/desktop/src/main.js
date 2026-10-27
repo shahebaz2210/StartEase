@@ -97,6 +97,78 @@ function savePosition(x, y) {
   }
 }
 
+let preStagnationPosition = null;
+let glideInterval = null;
+
+function animateWindowPosition(targetWin, targetX, targetY, durationMs = 350) {
+  if (!targetWin || targetWin.isDestroyed()) return;
+  if (glideInterval) clearInterval(glideInterval);
+
+  const [startX, startY] = targetWin.getPosition();
+  const startTime = Date.now();
+
+  glideInterval = setInterval(() => {
+    if (!targetWin || targetWin.isDestroyed()) {
+      clearInterval(glideInterval);
+      glideInterval = null;
+      return;
+    }
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    // Cubic ease-in-out curve
+    const ease = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+    const currentX = Math.round(startX + (targetX - startX) * ease);
+    const currentY = Math.round(startY + (targetY - startY) * ease);
+
+    targetWin.setPosition(currentX, currentY);
+
+    if (progress >= 1) {
+      clearInterval(glideInterval);
+      glideInterval = null;
+    }
+  }, 16);
+}
+
+function glideFloatToCenter() {
+  if (!floatWindow || floatWindow.isDestroyed()) return;
+  const [currX, currY] = floatWindow.getPosition();
+  preStagnationPosition = { x: currX, y: currY };
+
+  const primary = screen.getPrimaryDisplay().workArea;
+  const centerX = Math.round(primary.x + (primary.width - FLOAT_WIDTH) / 2);
+  const centerY = Math.round(primary.y + (primary.height - FLOAT_HEIGHT) / 2);
+
+  animateWindowPosition(floatWindow, centerX, centerY, 350);
+}
+
+function glideFloatToCorner() {
+  if (!floatWindow || floatWindow.isDestroyed()) return;
+  const target = preStagnationPosition || loadSavedPosition();
+  animateWindowPosition(floatWindow, target.x, target.y, 350);
+}
+
+function closeFloatWithFade() {
+  if (!floatWindow || floatWindow.isDestroyed()) return;
+  let opacity = 1.0;
+  const fadeInterval = setInterval(() => {
+    if (!floatWindow || floatWindow.isDestroyed()) {
+      clearInterval(fadeInterval);
+      return;
+    }
+    opacity -= 0.15;
+    if (opacity <= 0.05) {
+      clearInterval(fadeInterval);
+      floatWindow.hide();
+      floatWindow.setOpacity(1.0);
+    } else {
+      floatWindow.setOpacity(opacity);
+    }
+  }, 30);
+}
+
 function createFullWindow() {
   if (fullWindow && !fullWindow.isDestroyed()) {
     return fullWindow;
@@ -414,6 +486,18 @@ app.whenReady().then(() => {
     } catch {
       return 0;
     }
+  });
+
+  ipcMain.on("glide-to-center", () => {
+    glideFloatToCenter();
+  });
+
+  ipcMain.on("glide-to-corner", () => {
+    glideFloatToCorner();
+  });
+
+  ipcMain.on("close-float-fade", () => {
+    closeFloatWithFade();
   });
 
   app.on("activate", () => {

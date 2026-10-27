@@ -185,7 +185,36 @@ export default function Home() {
     }
   };
 
-  // 4. Step Action: Confused
+  // 4. Step Action: Simpler Step (combines Confused & Too Big)
+  const handleSimplerStep = async () => {
+    if (!session) return;
+    setLoadingMessage({
+      title: "Making this step simpler...",
+      subtitle: "Putting this in clearer words and tinier actions.",
+    });
+    setCurrentScreen("loading");
+
+    try {
+      const res = await api.respond(session.session_id, "simpler_step");
+      const updated = { ...session, ...res, variant: "smaller" as const };
+      updateSessionState(updated);
+      setCurrentScreen("step");
+    } catch (err: any) {
+      console.error("Simpler step error:", err);
+      if (err?.status === 404 && session?.task) {
+        try {
+          const fresh = await api.createSession(session.task);
+          updateSessionState({ ...fresh, deadline: session.deadline });
+          setCurrentScreen("step");
+          return;
+        } catch {}
+      }
+      setErrorMessage("Something went wrong on my side. Your progress is safe.");
+      setCurrentScreen("error");
+    }
+  };
+
+  // 4b. Legacy Step Action: Confused
   const handleConfused = async () => {
     if (!session) return;
     setLoadingMessage({
@@ -409,6 +438,7 @@ export default function Home() {
           <StepScreen
             session={session}
             onDone={handleDone}
+            onSimplerStep={handleSimplerStep}
             onConfused={handleConfused}
             onTooBig={handleTooBig}
             onNotNow={handleNotNow}

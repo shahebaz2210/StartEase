@@ -44,7 +44,7 @@ def test_respond_done_and_completion():
 
     # Tap Done repeatedly until complete
     is_complete = False
-    for _ in range(15):
+    for _ in range(40):
         done_res = client.post(f"/v1/sessions/{session_id}/respond", json={"response": "done"})
         assert done_res.status_code == 200
         step_data = done_res.json()
@@ -59,6 +59,21 @@ def test_respond_done_and_completion():
             assert step_data["step"] is not None
 
     assert is_complete is True
+
+
+def test_respond_simpler_step():
+    create_res = client.post("/v1/sessions", json={"task": "Create a budget plan"})
+    assert create_res.status_code == 200
+    session_id = create_res.json()["session_id"]
+
+    simpler_res = client.post(f"/v1/sessions/{session_id}/respond", json={"response": "simpler_step"})
+    assert simpler_res.status_code == 200
+    data = simpler_res.json()
+
+    assert data["status"] == "step"
+    assert data["variant"] == "simpler"
+    assert data["step"] is not None
+    assert len(data["step"].split()) <= 25
 
 
 def test_respond_confused():

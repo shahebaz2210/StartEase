@@ -18,8 +18,9 @@ import { SessionData, StepVariant } from "@/lib/types";
 interface StepScreenProps {
   session: SessionData;
   onDone: () => void;
-  onConfused: () => void;
-  onTooBig: () => void;
+  onSimplerStep?: () => void;
+  onConfused?: () => void;
+  onTooBig?: () => void;
   onNotNow: () => void;
   onCantUseApp: () => void;
   showShortcuts?: boolean;
@@ -28,6 +29,7 @@ interface StepScreenProps {
 export function StepScreen({
   session,
   onDone,
+  onSimplerStep,
   onConfused,
   onTooBig,
   onNotNow,
@@ -55,10 +57,9 @@ export function StepScreen({
         onDone();
       } else if (e.key === "2") {
         e.preventDefault();
-        onConfused();
-      } else if (e.key === "3") {
-        e.preventDefault();
-        onTooBig();
+        if (onSimplerStep) onSimplerStep();
+        else if (onTooBig) onTooBig();
+        else if (onConfused) onConfused();
       } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
         onNotNow();
@@ -67,7 +68,7 @@ export function StepScreen({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onDone, onConfused, onTooBig, onNotNow]);
+  }, [onDone, onSimplerStep, onConfused, onTooBig, onNotNow]);
 
   const handleReadAloud = () => {
     if (!isSpeechSynthesisAvailable()) return;
@@ -209,32 +210,20 @@ export function StepScreen({
             </span>
           </button>
 
-          {/* 2-column secondary buttons: Confused / Too big */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={onConfused}
-              className="h-[48px] px-4 rounded-xl bg-[#DEECE2] hover:bg-[#D1E3D6] text-[#1E3F29] font-semibold text-xs flex items-center justify-between transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[#1E3F29]" />
-                <span>Confused</span>
-              </div>
-              {showShortcuts && <span className="text-[#5B7A68] font-normal">[2]</span>}
-            </button>
-
-            <button
-              type="button"
-              onClick={onTooBig}
-              className="h-[48px] px-4 rounded-xl bg-[#DEECE2] hover:bg-[#D1E3D6] text-[#1E3F29] font-semibold text-xs flex items-center justify-between transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Minimize2 className="w-4 h-4 text-[#1E3F29]" />
-                <span>Too big</span>
-              </div>
-              {showShortcuts && <span className="text-[#5B7A68] font-normal">[3]</span>}
-            </button>
-          </div>
+          {/* Single Secondary Action: Simpler step */}
+          <button
+            type="button"
+            onClick={onSimplerStep || onTooBig || onConfused}
+            className="w-full h-[50px] px-5 rounded-xl bg-[#DEECE2] hover:bg-[#D1E3D6] text-[#1E3F29] font-semibold text-xs flex items-center justify-between transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Minimize2 className="w-4 h-4 text-[#1E3F29]" />
+              <span className="text-[14px]">Simpler step</span>
+            </div>
+            <span className="text-xs text-[#5B7A68] font-normal">
+              Makes it plainer and smaller {showShortcuts && "[2]"}
+            </span>
+          </button>
 
           {/* Not now Button */}
           <button
@@ -255,8 +244,7 @@ export function StepScreen({
           <div className="flex items-center gap-1.5">
             <span>Shortcuts: </span>
             <span className="font-semibold text-[#142D1E]">[1]</span> Done •{" "}
-            <span className="font-semibold text-[#142D1E]">[2]</span> Explain •{" "}
-            <span className="font-semibold text-[#142D1E]">[3]</span> Smaller •{" "}
+            <span className="font-semibold text-[#142D1E]">[2]</span> Simpler step •{" "}
             <span className="font-semibold text-[#142D1E]">[Space]</span> Rest
           </div>
           <div>

@@ -15,10 +15,12 @@ class VariantEnum(str, Enum):
     NORMAL = "normal"
     EXPLAINED = "explained"
     SMALLER = "smaller"
+    SIMPLER = "simpler"
 
 
 class UserResponseEnum(str, Enum):
     DONE = "done"
+    SIMPLER_STEP = "simpler_step"
     CONFUSED = "confused"
     TOO_BIG = "too_big"
     NOT_NOW = "not_now"

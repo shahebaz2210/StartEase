@@ -24,6 +24,7 @@ export default function FloatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [transition, setTransition] = useState<{ title: string; subtitle: string } | null>(null);
   const [isStagnant, setIsStagnant] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const lastActiveTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -105,6 +106,15 @@ export default function FloatPage() {
     const interval = setInterval(checkStagnation, 2000);
     return () => clearInterval(interval);
   }, [sessionStatus, sessionStep, isStagnant, isLoading, transition]);
+
+  // Glide window to center when stagnation is detected
+  useEffect(() => {
+    if (isStagnant) {
+      if (typeof window !== "undefined" && (window as any).electronApi?.glideToCenter) {
+        (window as any).electronApi.glideToCenter();
+      }
+    }
+  }, [isStagnant]);
 
   // Track user input/pointer on the window to reset in-app idle timer
   useEffect(() => {
@@ -214,39 +224,15 @@ export default function FloatPage() {
     }
   };
 
-  const handleConfused = async () => {
+  const handleSimplerStep = async () => {
     if (!session || isLoading) return;
     setIsLoading(true);
     setTransition({
-      title: "Finding simpler words...",
-      subtitle: "Putting this in clearer language for you.",
+      title: "Making this step simpler...",
+      subtitle: "Putting this in clearer words and tinier actions.",
     });
     try {
-      const res = await api.respond(session.session_id, "confused");
-      updateSession({ ...res, variant: "simpler" });
-    } catch (e: any) {
-      console.error(e);
-      if (e?.status === 404 && session?.task) {
-        try {
-          const fresh = await api.createSession(session.task);
-          updateSession(fresh);
-        } catch {}
-      }
-    } finally {
-      setIsLoading(false);
-      setTransition(null);
-    }
-  };
-
-  const handleTooBig = async () => {
-    if (!session || isLoading) return;
-    setIsLoading(true);
-    setTransition({
-      title: "Making this step smaller...",
-      subtitle: "Breaking it into tinier, gentler actions.",
-    });
-    try {
-      const res = await api.respond(session.session_id, "too_big");
+      const res = await api.respond(session.session_id, "simpler_step");
       updateSession({ ...res, variant: "smaller" });
     } catch (e: any) {
       console.error(e);
@@ -262,6 +248,14 @@ export default function FloatPage() {
     }
   };
 
+  const handleConfused = async () => {
+    handleSimplerStep();
+  };
+
+  const handleTooBig = async () => {
+    handleSimplerStep();
+  };
+
   const handleNotNow = async () => {
     if (!session || isLoading) return;
     try {
@@ -270,6 +264,16 @@ export default function FloatPage() {
     } catch (e) {
       updateSession({ status: "rest" });
     }
+
+    // Show calm guilt-free card then smoothly close/hide float window
+    setIsClosing(true);
+    setTimeout(() => {
+      if (typeof window !== "undefined" && (window as any).electronApi?.closeFloatWithFade) {
+        (window as any).electronApi.closeFloatWithFade();
+      } else if (window.opener) {
+        window.close();
+      }
+    }, 1800);
   };
 
   const handleResume = async (mode: "same" | "smaller") => {
@@ -309,6 +313,9 @@ export default function FloatPage() {
           e.preventDefault();
           setIsStagnant(false);
           lastActiveTimeRef.current = Date.now();
+          if (typeof window !== "undefined" && (window as any).electronApi?.glideToCorner) {
+            (window as any).electronApi.glideToCorner();
+          }
         } else if (e.key === " " || e.code === "Space" || e.key === "2") {
           e.preventDefault();
           setIsStagnant(false);
@@ -322,10 +329,7 @@ export default function FloatPage() {
         handleDone();
       } else if (e.key === "2") {
         e.preventDefault();
-        handleConfused();
-      } else if (e.key === "3") {
-        e.preventDefault();
-        handleTooBig();
+        handleSimplerStep();
       } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
         handleNotNow();
@@ -408,7 +412,19 @@ export default function FloatPage() {
 
         {/* Body content based on state */}
         <div className="p-4 flex-1 flex flex-col justify-between space-y-3 min-h-[190px]">
-          {transition ? (
+          {isClosing ? (
+            <div className="py-7 px-3 text-center space-y-2.5 flex flex-col items-center justify-center flex-1 animate-in fade-in duration-200">
+              <div className="w-9 h-9 rounded-full bg-[#E1F0E6] flex items-center justify-center text-[#2D5A3D] mx-auto">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <p className="font-serif-title text-sm font-bold text-[#1A3323]">
+                Rest is a good choice.
+              </p>
+              <p className="text-xs text-[#5A7764] leading-relaxed">
+                Progress saved. Closing for now — come back whenever you're ready.
+              </p>
+            </div>
+          ) : transition ? (
             <div className="py-7 px-2 text-center space-y-3 flex flex-col items-center justify-center flex-1 animate-in fade-in duration-200">
               <div className="w-10 h-10 rounded-full bg-[#E1F0E6] flex items-center justify-center text-[#2D5A3D] mx-auto animate-pulse">
                 <Sprout className="w-5 h-5" />
@@ -493,6 +509,9 @@ export default function FloatPage() {
                       onClick={() => {
                         setIsStagnant(false);
                         lastActiveTimeRef.current = Date.now();
+                        if (typeof window !== "undefined" && (window as any).electronApi?.glideToCorner) {
+                          (window as any).electronApi.glideToCorner();
+                        }
                       }}
                       className="flex-1 py-2 px-2.5 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
@@ -516,35 +535,24 @@ export default function FloatPage() {
                   <button
                     onClick={handleDone}
                     disabled={isLoading}
-                    className="w-full py-2.5 px-3 rounded-xl btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs"
+                    className="w-full py-2.5 px-3 rounded-xl btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Done</span>
                   </button>
 
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={handleConfused}
-                      disabled={isLoading}
-                      className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
-                    >
-                      <MessageSquare className="w-3 h-3 text-[#2D5A3D]" />
-                      <span>Confused</span>
-                    </button>
-
-                    <button
-                      onClick={handleTooBig}
-                      disabled={isLoading}
-                      className="py-2 px-2.5 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1"
-                    >
-                      <Minimize2 className="w-3 h-3 text-[#2D5A3D]" />
-                      <span>Too big</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleSimplerStep}
+                    disabled={isLoading}
+                    className="w-full py-2 px-3 rounded-lg btn-sage-medium text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Minimize2 className="w-3.5 h-3.5 text-[#2D5A3D]" />
+                    <span>Simpler step</span>
+                  </button>
 
                   <button
                     onClick={handleNotNow}
-                    className="w-full py-1.5 text-[11px] text-[#718779] hover:text-[#1A3323] flex items-center justify-center gap-1"
+                    className="w-full py-1.5 text-[11px] text-[#718779] hover:text-[#1A3323] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Pause className="w-3 h-3" />
                     <span>Not now</span>
