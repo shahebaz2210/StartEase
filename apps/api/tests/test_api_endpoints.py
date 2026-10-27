@@ -172,3 +172,38 @@ def test_step_1_exactness_all_catalogue_tasks():
         assert data["status"] == "step"
         assert data["step"] == row.first_tiny_action
         assert data["app"]["name"] == row.recommended_app
+
+
+def test_multi_task_queue_and_next_task():
+    # Submit multi-task input
+    multi_task_input = "Create a mind map, then test api endpoints in postman"
+    create_res = client.post("/v1/sessions", json={"task": multi_task_input})
+    assert create_res.status_code == 200
+    data = create_res.json()
+    session_id = data["session_id"]
+
+    assert data["status"] == "step"
+    assert data["has_more_tasks"] is True
+    assert "test api endpoints in postman" in data["next_task_title"].lower()
+
+    # Step through task 1 until complete
+    is_complete = False
+    for _ in range(40):
+        done_res = client.post(f"/v1/sessions/{session_id}/respond", json={"response": "done"})
+        assert done_res.status_code == 200
+        step_data = done_res.json()
+        if step_data["status"] == "complete":
+            is_complete = True
+            assert step_data["has_more_tasks"] is True
+            assert "test api endpoints in postman" in step_data["next_task_title"].lower()
+            break
+
+    assert is_complete is True
+
+    # Call next-task endpoint to load task 2
+    next_res = client.post(f"/v1/sessions/{session_id}/next-task")
+    assert next_res.status_code == 200
+    next_data = next_res.json()
+    assert next_data["status"] == "step"
+    assert next_data["app"]["name"] == "Postman"
+    assert next_data["has_more_tasks"] is False

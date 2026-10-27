@@ -24,11 +24,22 @@ class SessionData(BaseModel):
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
     llm_call_count: int = 0
+    task_queue: List[str] = Field(default_factory=list)
 
     @property
     def current_step(self) -> Optional[str]:
         if 0 <= self.current_step_index < len(self.steps):
             return self.steps[self.current_step_index]
+        return None
+
+    @property
+    def has_more_tasks(self) -> bool:
+        return len(self.task_queue) > 0
+
+    @property
+    def next_task_title(self) -> Optional[str]:
+        if self.task_queue:
+            return self.task_queue[0]
         return None
 
     def advance_step(self) -> bool:
@@ -41,6 +52,28 @@ class SessionData(BaseModel):
             return False
         self.status = "step"
         return True
+
+    def load_next_task(
+        self,
+        app_name: Optional[str],
+        app_reason: Optional[str],
+        steps: List[str],
+        matched_task_id: Optional[int] = None,
+    ) -> Optional[str]:
+        """Pops the next task from the queue and sets it as the active task."""
+        if not self.task_queue:
+            return None
+        next_task = self.task_queue.pop(0)
+        self.task = next_task
+        self.matched_task_id = matched_task_id
+        self.app_name = app_name
+        self.app_reason = app_reason
+        self.steps = steps
+        self.current_step_index = 0
+        self.status = "step"
+        self.variant = "normal"
+        self.updated_at = time.time()
+        return next_task
 
     def replace_current_step(self, new_text: str, variant: str = "explained"):
         """Replaces current step text with explanation."""
@@ -130,6 +163,7 @@ class SessionManager:
         app_name: Optional[str],
         app_reason: Optional[str],
         steps: List[str],
+        task_queue: Optional[List[str]] = None,
     ) -> SessionData:
         self.cleanup_expired()
         session_id = str(uuid.uuid4())
@@ -143,6 +177,7 @@ class SessionManager:
             current_step_index=0,
             status="step",
             variant="normal",
+            task_queue=task_queue or [],
         )
         self._sessions[session_id] = session
         self.save()

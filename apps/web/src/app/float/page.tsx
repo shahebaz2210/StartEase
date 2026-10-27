@@ -276,6 +276,30 @@ export default function FloatPage() {
     }, 1800);
   };
 
+  const handleStartNextTask = async () => {
+    if (!session || isLoading) return;
+    setIsLoading(true);
+    setTransition({
+      title: "Loading next task...",
+      subtitle: "Preparing your first calm micro-action.",
+    });
+    try {
+      const nextTitle = session.next_task_title;
+      const res = await api.nextTask(session.session_id);
+      updateSession({
+        ...res,
+        task: nextTitle || session.task,
+        status: "step",
+        variant: "normal",
+      });
+    } catch (e) {
+      updateSession({ status: "step" });
+    } finally {
+      setIsLoading(false);
+      setTransition(null);
+    }
+  };
+
   const handleResume = async (mode: "same" | "smaller") => {
     if (!session || isLoading) return;
     setIsLoading(true);
@@ -446,11 +470,35 @@ export default function FloatPage() {
               </p>
             </div>
           ) : session.status === "completed" ? (
-            <div className="text-center py-6 space-y-2">
+            <div className="text-center py-5 space-y-3">
               <CheckCircle2 className="w-8 h-8 text-[#2D5A3D] mx-auto" />
-              <p className="text-xs font-semibold text-[#1A3323]">
-                You finished this task. Well done.
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-[#1A3323]">
+                  You finished this task. Well done.
+                </p>
+                {session.has_more_tasks && session.next_task_title && (
+                  <p className="text-[11px] text-[#5A7764]">
+                    Whenever you're ready, next: <span className="font-semibold text-[#1A3323]">{session.next_task_title}</span>
+                  </p>
+                )}
+              </div>
+              {session.has_more_tasks ? (
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleStartNextTask}
+                    className="flex-1 py-2 px-3 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Play className="w-3 h-3 fill-white" />
+                    <span>Start next task</span>
+                  </button>
+                  <button
+                    onClick={handleNotNow}
+                    className="flex-1 py-2 px-3 rounded-lg btn-sage-medium text-xs font-medium cursor-pointer"
+                  >
+                    Will do it later
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : session.status === "rest" ? (
             <div className="space-y-3 text-center py-2">

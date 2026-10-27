@@ -49,7 +49,9 @@ class StepResponse(BaseModel):
     status: StatusEnum = Field(..., description="Current interaction status")
     step: Optional[str] = Field(None, description="The single current step to display")
     app: Optional[App] = Field(None, description="Recommended application")
-    variant: Optional[VariantEnum] = Field(None, description="Variant label indicator (normal, explained, smaller)")
+    variant: Optional[VariantEnum] = Field(None, description="Variant label indicator (normal, explained, smaller, simpler)")
+    has_more_tasks: Optional[bool] = Field(False, description="Whether another task is queued")
+    next_task_title: Optional[str] = Field(None, description="Title of next queued task if any")
 
 
 class CreateSessionRequest(BaseModel):

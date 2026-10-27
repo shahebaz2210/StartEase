@@ -321,6 +321,34 @@ export default function Home() {
     }
   };
 
+  // 6b. Start Next Queued Task (from Multi-task brain dump)
+  const handleStartNextTask = async () => {
+    if (!session) return;
+    setLoadingMessage({
+      title: "Loading next task...",
+      subtitle: "Preparing your first calm micro-action.",
+    });
+    setCurrentScreen("loading");
+
+    try {
+      const nextTitle = session.next_task_title;
+      const res = await api.nextTask(session.session_id);
+      const updated: SessionData = {
+        ...session,
+        ...res,
+        task: nextTitle || session.task,
+        status: "step" as const,
+        variant: "normal" as const,
+      };
+      updateSessionState(updated);
+      setCurrentScreen("step");
+    } catch (err: any) {
+      console.error("Start next task error:", err);
+      setErrorMessage("Something went wrong loading the next task. Your progress is safe.");
+      setCurrentScreen("error");
+    }
+  };
+
   // 7. Resume Same Step
   const handleResumeSame = async () => {
     if (!session) return;
@@ -503,6 +531,14 @@ export default function Home() {
       case "complete":
         return (
           <CompleteScreen
+            hasMoreTasks={session?.has_more_tasks}
+            nextTaskTitle={session?.next_task_title}
+            onStartNextQueuedTask={handleStartNextTask}
+            onRestOrLater={() => {
+              updateSessionState(null);
+              setCurrentScreen("decompose");
+              setActiveTab("decompose");
+            }}
             onStartNewTask={() => {
               updateSessionState(null);
               setCurrentScreen("decompose");
