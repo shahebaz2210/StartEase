@@ -19,7 +19,6 @@ import { SessionData } from "@/lib/types";
 
 export default function FloatPage() {
   const [session, setSession] = useState<SessionData | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [showHint, setShowHint] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [transition, setTransition] = useState<{ title: string; subtitle: string } | null>(null);
@@ -378,22 +377,7 @@ export default function FloatPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [session, isLoading, transition, isStagnant]);
 
-  // 1. Collapsed Pill View
-  if (isCollapsed) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={() => setIsCollapsed(false)}
-          className="flex items-center gap-2 bg-[#2D5A3D] text-white px-3.5 py-2 rounded-full shadow-xl hover:bg-[#244931] transition-all focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]"
-        >
-          <Sprout className="w-4 h-4" />
-          <span className="text-xs font-semibold tracking-wide">StartEase</span>
-        </button>
-      </div>
-    );
-  }
-
-  // 2. Expanded Floating Window View
+  // Expanded Floating Window View
   return (
     <div className="min-h-screen bg-transparent p-2 flex items-center justify-center">
       <div className="floating-window w-[340px] border border-[#D3E4D8] bg-white shadow-2xl flex flex-col justify-between">
@@ -425,13 +409,6 @@ export default function FloatPage() {
             >
               <Maximize2 className="w-3 h-3" />
             </button>
-            <button
-              onClick={() => setIsCollapsed(true)}
-              title="Collapse to pill"
-              className="p-1 rounded text-[#718779] hover:bg-[#DDEEE2] transition-colors cursor-pointer"
-            >
-              <Minimize2 className="w-3 h-3" />
-            </button>
           </div>
         </div>
 
@@ -441,7 +418,7 @@ export default function FloatPage() {
             onPointerDown={handleDragStart}
             className="bg-[#E1F0E6] px-3 py-1 text-[11px] text-[#2D5A3D] flex items-center justify-between select-none cursor-move active:cursor-grabbing touch-none"
           >
-            <span>Drag me anywhere. Tap bar to tuck away.</span>
+            <span>Drag me anywhere on your screen.</span>
             <button onClick={() => setShowHint(false)} className="cursor-pointer p-0.5 no-drag">
               <X className="w-3 h-3 text-[#2D5A3D]" />
             </button>
