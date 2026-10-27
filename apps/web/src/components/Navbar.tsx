@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sprout, User, Shield, Trash2, X } from "lucide-react";
+import { Sprout, User, Shield, Trash2, X, LogIn, LogOut } from "lucide-react";
+import { UserProfile } from "@/lib/types";
 
 interface NavbarProps {
   activeTab: "focus" | "decompose" | "log" | "preferences";
@@ -9,6 +10,9 @@ interface NavbarProps {
   onOpenPrivacy: () => void;
   onClearSession: () => void;
   hasActiveTask: boolean;
+  user?: UserProfile | null;
+  onOpenAuth?: (mode?: "login" | "register") => void;
+  onLogout?: () => void;
 }
 
 export function Navbar({
@@ -17,6 +21,9 @@ export function Navbar({
   onOpenPrivacy,
   onClearSession,
   hasActiveTask,
+  user,
+  onOpenAuth,
+  onLogout,
 }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -104,9 +111,13 @@ export function Navbar({
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Profile menu"
-            className="w-8 h-8 rounded-full bg-[#183B20] text-white flex items-center justify-center hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#183B20] text-white flex items-center justify-center hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/40 cursor-pointer text-xs font-semibold"
           >
-            <User className="w-4 h-4 text-white" />
+            {user ? (
+              <span>{(user.name || user.email)[0].toUpperCase()}</span>
+            ) : (
+              <User className="w-4 h-4 text-white" />
+            )}
           </button>
 
           {menuOpen && (
@@ -115,11 +126,29 @@ export function Navbar({
                 className="fixed inset-0 z-40"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-xl border border-[#D3E4D8]/60 py-2 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-60 rounded-xl bg-white shadow-xl border border-[#D3E4D8]/60 py-2 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-4 py-2 border-b border-[#D3E4D8]/30">
                   <p className="text-xs font-medium text-[#718779]">Signed in as</p>
-                  <p className="text-sm font-semibold text-[#1A3323]">Guest</p>
+                  <p className="text-sm font-semibold text-[#1A3323] truncate">
+                    {user ? user.name || user.email : "Guest"}
+                  </p>
+                  {user && user.name && (
+                    <p className="text-xs text-[#718779] truncate">{user.email}</p>
+                  )}
                 </div>
+
+                {!user && onOpenAuth && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenAuth("login");
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#1B3F27] bg-[#EAF5EE] hover:bg-[#DFEFE4] flex items-center gap-2 font-medium cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4 text-[#1B3F27]" />
+                    Sign In / Create Account
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
@@ -149,6 +178,19 @@ export function Navbar({
                   <Shield className="w-4 h-4 text-[#2D5A3D]" />
                   How your data is used
                 </button>
+
+                {user && onLogout && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#4A5D50] hover:bg-[#EFF7F1] flex items-center gap-2 cursor-pointer border-t border-[#D3E4D8]/30"
+                  >
+                    <LogOut className="w-4 h-4 text-[#4A5D50]" />
+                    Sign out
+                  </button>
+                )}
 
                 <button
                   onClick={() => {

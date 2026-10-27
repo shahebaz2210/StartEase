@@ -15,9 +15,10 @@ import { GentleLogScreen } from "@/components/screens/GentleLogScreen";
 import { PreferencesScreen } from "@/components/screens/PreferencesScreen";
 import { CantUseAppModal } from "@/components/modals/CantUseAppModal";
 import { PrivacyModal } from "@/components/modals/PrivacyModal";
+import { AuthModal } from "@/components/modals/AuthModal";
 import { api, ApiError } from "@/lib/api";
 import { storage } from "@/lib/storage";
-import { SessionData, TaskLogItem, UserPreferences } from "@/lib/types";
+import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "@/lib/types";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"focus" | "decompose" | "log" | "preferences">("decompose");
@@ -28,9 +29,43 @@ export default function Home() {
   const [session, setSession] = useState<SessionData | null>(null);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isCantUseAppOpen, setIsCantUseAppOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences>(storage.getPreferences());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<{ title: string; subtitle: string } | null>(null);
+
+  // Restore authenticated user profile on mount
+  useEffect(() => {
+    const cachedUser = storage.getAuthUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+    }
+    if (storage.getAuthToken()) {
+      api
+        .getMe()
+        .then((profile) => setUser(profile))
+        .catch(() => {
+          // Token expired or invalid
+          storage.clearAuthToken();
+          storage.clearAuthUser();
+          setUser(null);
+        });
+    }
+  }, []);
+
+  const handleAuthSuccess = (authenticatedUser: UserProfile) => {
+    setUser(authenticatedUser);
+    if (currentScreen === "welcome") {
+      setCurrentScreen("decompose");
+    }
+  };
+
+  const handleLogout = async () => {
+    await api.logout();
+    setUser(null);
+  };
 
   // Restore session from localStorage on initial load and keep synchronized across windows
   useEffect(() => {
@@ -408,6 +443,10 @@ export default function Home() {
           <WelcomeScreen
             onContinueAsGuest={handleContinueAsGuest}
             onOpenPrivacy={() => setIsPrivacyOpen(true)}
+            onOpenAuth={(mode) => {
+              setAuthModalMode(mode || "login");
+              setIsAuthModalOpen(true);
+            }}
           />
         );
 
@@ -537,6 +576,12 @@ export default function Home() {
           onOpenPrivacy={() => setIsPrivacyOpen(true)}
           onClearSession={handleClearSession}
           hasActiveTask={!!session && session.status !== "completed"}
+          user={user}
+          onOpenAuth={(mode) => {
+            setAuthModalMode(mode || "login");
+            setIsAuthModalOpen(true);
+          }}
+          onLogout={handleLogout}
         />
       )}
 
@@ -545,6 +590,13 @@ export default function Home() {
       {currentScreen !== "welcome" && <Footer />}
 
       {/* Modals */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        initialMode={authModalMode}
+      />
+
       <CantUseAppModal
         currentApp={typeof session?.app === "object" ? (session.app as any)?.name : (session?.app || "this app")}
         isOpen={isCantUseAppOpen}

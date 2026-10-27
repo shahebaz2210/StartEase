@@ -13,9 +13,10 @@ develop-eggs/
 dist/
 downloads/
 eggs/
-.eggs/
 lib/
 lib64/
+!apps/web/src/lib/
+data/users.json
 parts/
 sdist/
 var/

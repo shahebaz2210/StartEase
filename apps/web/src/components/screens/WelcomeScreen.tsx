@@ -6,11 +6,13 @@ import { Mail, ArrowRight } from "lucide-react";
 interface WelcomeScreenProps {
   onContinueAsGuest: () => void;
   onOpenPrivacy: () => void;
+  onOpenAuth?: (mode?: "login" | "register") => void;
 }
 
 export function WelcomeScreen({
   onContinueAsGuest,
   onOpenPrivacy,
+  onOpenAuth,
 }: WelcomeScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -83,7 +85,13 @@ export function WelcomeScreen({
           {/* Continue with email */}
           <button
             type="button"
-            onClick={handleUnavailableSignIn}
+            onClick={() => {
+              if (onOpenAuth) {
+                onOpenAuth("login");
+              } else {
+                handleUnavailableSignIn();
+              }
+            }}
             className="w-full h-12 rounded-xl bg-[#E2EFE6] text-sm font-semibold text-[#1B3F27] hover:bg-[#D5E7DC] transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
           >
             <Mail className="w-4 h-4 text-[#1B3F27]" />

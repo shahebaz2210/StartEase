@@ -23,6 +23,7 @@ from app.safety.crisis import is_crisis, CRISIS_RESPONSE_TEXT
 from app.retrieval.retriever import retriever
 from app.llm.gemini_client import gemini_client, PLAIN_DOCUMENT_STEP
 from app.sessions.session_manager import session_manager
+from app.auth.routes import auth_router
 
 # Configure privacy-safe logging: never log task text or step text
 logging.basicConfig(
@@ -36,6 +37,9 @@ app = FastAPI(
     version="1.0.0",
     description="One step at a time. No response ever includes a step count, step index, remaining steps or a list of steps.",
 )
+
+# Mount authentication router
+app.include_router(auth_router, prefix="/v1/auth", tags=["Authentication"])
 
 # CORS Middleware locking origins to web app and Electron app
 app.add_middleware(

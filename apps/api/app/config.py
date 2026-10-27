@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
     LOG_LEVEL: str = "info"
 
+    # Authentication & Security settings
+    JWT_SECRET: str = "startease-dev-secret-key-change-in-production-2026"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 720  # 30 days
+    DATABASE_URL: str = ""  # Ready to be linked when user provides database credentials
+
     # Base directory paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent
     DATA_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent / "data"
