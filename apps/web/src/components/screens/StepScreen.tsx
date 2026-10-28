@@ -171,12 +171,15 @@ export function StepScreen({
             </p>
           )}
 
+          {/* Calm Reassurance text matching docs/copy.md */}
           <p className="text-[15px] text-[#3D5A47] leading-relaxed">
-            That&apos;s all you need to do right now. Don&apos;t worry about typing words, collecting citations, or formatting. Just launch the app and open the blank file.
+            {session.step?.toLowerCase().startsWith("open ")
+              ? "That's all you need to do right now. Don't worry about typing words, collecting citations, or formatting. Just launch the app and open the blank file."
+              : "That's all you need to do right now."}
           </p>
         </div>
 
-        {/* Zero Expectation Milestone Box matching 04-step.png */}
+        {/* Zero Expectation Milestone Box matching 04-step.png & docs/copy.md */}
         <div className="bg-[#EAF5EE] border border-[#D5EAD9] rounded-2xl p-4 md:p-5 flex items-start gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-[#244930] shadow-2xs shrink-0 mt-0.5">
             <FileText className="w-4 h-4" />
@@ -184,7 +187,9 @@ export function StepScreen({
           <div className="text-xs sm:text-sm text-[#385040] space-y-0.5">
             <p className="font-semibold text-xs text-[#1E3E28]">Zero expectation milestone</p>
             <p className="text-xs text-[#3D5C49] leading-relaxed">
-              Once the page is on your screen, this step is 100% complete.
+              {session.step?.toLowerCase().startsWith("open ")
+                ? "Once the page is on your screen, this step is 100% complete."
+                : "Do just this one thing and this step counts as complete."}
             </p>
           </div>
         </div>

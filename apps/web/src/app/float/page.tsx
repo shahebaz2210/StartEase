@@ -284,8 +284,12 @@ export default function FloatPage() {
   const handleStartNewTask = () => {
     storage.clearSession();
     setSession(null);
-    if (typeof window !== "undefined" && (window as any).electronApi?.openMainWindow) {
-      (window as any).electronApi.openMainWindow();
+    if (typeof window !== "undefined") {
+      if ((window as any).electronApi?.switchToFull) {
+        (window as any).electronApi.switchToFull();
+      } else if ((window as any).electronApi?.openMainWindow) {
+        (window as any).electronApi.openMainWindow();
+      }
     }
   };
 
@@ -473,7 +477,7 @@ export default function FloatPage() {
                     className="flex-1 py-2 px-3 rounded-lg btn-primary-dark text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <Play className="w-3 h-3 fill-white" />
-                    <span>Start next task</span>
+                    <span>Start this task</span>
                   </button>
                 ) : (
                   <button

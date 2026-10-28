@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("electronApi", {
   isDesktop: true,
   switchToFloat: () => ipcRenderer.send("switch-to-float"),
   switchToFull: () => ipcRenderer.send("switch-to-full"),
+  openMainWindow: () => ipcRenderer.send("switch-to-full"),
   setOpacity: (opacity) => ipcRenderer.send("set-opacity", opacity),
   startDrag: () => ipcRenderer.send("start-drag"),
   dragging: () => ipcRenderer.send("dragging"),
