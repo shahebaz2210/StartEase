@@ -72,6 +72,10 @@ UNSUPPORTED_DOMAINS = [
     r"\bjoke(s)?\b",
     r"\bmedical\s+advice\b",
     r"\blegal\s+advice\b",
+    # Physical cooking, domestic, & household chores (Option B: strict study/work guardrail)
+    r"\b(coffee|espresso|latte|cappuccino|cup\s+of\s+tea|brew(ing)?\s+tea)\b",
+    r"\b(cook(ing)?|bake|baking|recipe|dinner|lunch|breakfast|meal\s*prep)\b",
+    r"\b(wash(ing)?\s+(the\s+)?dishes|do(ing)?\s+(the\s+)?dishes|laundry|fold(ing)?\s+clothes|clean(ing)?\s+(the\s+)?(house|room|kitchen|bathroom|toilet))\b",
 ]
 
 # Common student & academic term expansions to enrich sparse catalogue matches
