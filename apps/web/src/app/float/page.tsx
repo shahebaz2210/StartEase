@@ -496,7 +496,7 @@ export default function FloatPage() {
                 </button>
               </div>
             </div>
-          ) : !session || !session.step ? (
+          ) : !session || !session.step || session.status === "no_match" || session.status === "crisis" ? (
             <div className="text-center py-6 space-y-2">
               <p className="text-xs font-medium text-[#1A3323]">Nothing in progress.</p>
               <p className="text-[11px] text-[#718779]">

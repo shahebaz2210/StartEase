@@ -74,7 +74,7 @@ export default function Home() {
       const prefs = storage.getPreferences();
       setPreferences(prefs);
 
-      if (saved && saved.step) {
+      if (saved && saved.step && saved.status !== "no_match" && saved.status !== "crisis") {
         setSession(saved);
         if (saved.status === "completed") {
           setCurrentScreen("complete");
@@ -93,7 +93,7 @@ export default function Home() {
     const initialSaved = storage.getSession();
     const initialPrefs = storage.getPreferences();
     setPreferences(initialPrefs);
-    if (initialSaved && initialSaved.step && initialSaved.status !== "completed") {
+    if (initialSaved && initialSaved.step && initialSaved.status !== "completed" && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
       setSession(initialSaved);
       if (initialSaved.status === "rest") {
         setCurrentScreen("rest");
@@ -122,7 +122,7 @@ export default function Home() {
   // Update session in storage whenever it changes
   const updateSessionState = (newSession: SessionData | null) => {
     setSession(newSession);
-    if (newSession) {
+    if (newSession && newSession.status !== "no_match" && newSession.status !== "crisis") {
       storage.saveSession(newSession);
       // Update Gentle Log
       storage.addOrUpdateLog({
@@ -162,10 +162,12 @@ export default function Home() {
       };
 
       if (enriched.status === "crisis") {
-        updateSessionState(enriched);
+        updateSessionState(null);
+        setSession(enriched);
         setCurrentScreen("crisis");
       } else if (enriched.status === "no_match") {
-        updateSessionState(enriched);
+        updateSessionState(null);
+        setSession(enriched);
         setCurrentScreen("no_match");
       } else {
         updateSessionState(enriched);
