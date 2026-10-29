@@ -18,7 +18,7 @@ import { PrivacyModal } from "@/components/modals/PrivacyModal";
 import { AuthModal } from "@/components/modals/AuthModal";
 import { api, ApiError } from "@/lib/api";
 import { storage } from "@/lib/storage";
-import { supabaseDb } from "@/lib/supabase";
+import { supabase, supabaseDb, mapSupabaseUser } from "@/lib/supabase";
 import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "@/lib/types";
 
 export default function Home() {
@@ -37,7 +37,7 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<{ title: string; subtitle: string } | null>(null);
 
-  // Restore authenticated user profile on mount
+  // Restore authenticated user profile on mount & handle Supabase auth state changes (e.g. Google OAuth)
   useEffect(() => {
     const cachedUser = storage.getAuthUser();
     if (cachedUser) {
@@ -54,6 +54,21 @@ export default function Home() {
           setUser(null);
         });
     }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+      if (supaSession?.user) {
+        const profile = mapSupabaseUser(supaSession.user);
+        storage.saveAuthToken(supaSession.access_token);
+        storage.saveAuthUser(profile);
+        setUser(profile);
+        setCurrentScreen("decompose");
+        setActiveTab("decompose");
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const handleAuthSuccess = (authenticatedUser: UserProfile) => {
@@ -135,6 +150,10 @@ export default function Home() {
         setCurrentScreen("step");
         setActiveTab("focus");
       }
+    } else if (activeUid && activeUid !== "guest") {
+      // User is authenticated: proceed straight to task entry rather than welcome
+      setCurrentScreen("decompose");
+      setActiveTab("decompose");
     } else {
       setCurrentScreen("welcome");
     }
@@ -209,6 +228,16 @@ export default function Home() {
   const handleContinueAsGuest = () => {
     setCurrentScreen("decompose");
     setActiveTab("decompose");
+  };
+
+  // 1b. Welcome -> Google Sign-in
+  const handleSignInWithGoogle = async () => {
+    try {
+      await api.signInWithGoogle();
+    } catch (err: any) {
+      console.error("Google sign in error:", err);
+      setErrorMessage("Could not connect to Google sign in. Please try email sign in.");
+    }
   };
 
   // 2. Submit Task
@@ -625,6 +654,7 @@ export default function Home() {
               setAuthModalMode(mode || "login");
               setIsAuthModalOpen(true);
             }}
+            onSignInWithGoogle={handleSignInWithGoogle}
           />
         );
 

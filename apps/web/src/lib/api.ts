@@ -172,6 +172,10 @@ export const api = {
     }
   },
 
+  async signInWithGoogle() {
+    return supabaseAuth.signInWithGoogle();
+  },
+
   async getMe(): Promise<UserProfile> {
     try {
       const user = await request<UserProfile>("/v1/auth/me", {

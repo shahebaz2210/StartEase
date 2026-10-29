@@ -7,12 +7,14 @@ interface WelcomeScreenProps {
   onContinueAsGuest: () => void;
   onOpenPrivacy: () => void;
   onOpenAuth?: (mode?: "login" | "register") => void;
+  onSignInWithGoogle?: () => void;
 }
 
 export function WelcomeScreen({
   onContinueAsGuest,
   onOpenPrivacy,
   onOpenAuth,
+  onSignInWithGoogle,
 }: WelcomeScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -58,7 +60,13 @@ export function WelcomeScreen({
           {/* Continue with Google */}
           <button
             type="button"
-            onClick={handleUnavailableSignIn}
+            onClick={() => {
+              if (onSignInWithGoogle) {
+                onSignInWithGoogle();
+              } else {
+                handleUnavailableSignIn();
+              }
+            }}
             className="w-full h-12 rounded-xl border border-[#DFEAE2] bg-white text-sm font-semibold text-[#112316] hover:bg-[#F9FCFA] transition-colors flex items-center justify-center gap-3 shadow-2xs cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
