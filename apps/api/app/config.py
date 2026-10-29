@@ -25,7 +25,11 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "startease-dev-secret-key-change-in-production-2026"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 720  # 30 days
-    DATABASE_URL: str = ""  # Ready to be linked when user provides database credentials
+    # Supabase Configuration (loaded dynamically from .env)
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_PUBLISHABLE_KEY: str = ""
+    SUPABASE_SECRET_KEY: str = ""
 
     # Base directory paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent

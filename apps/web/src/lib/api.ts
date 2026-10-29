@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { AuthTokens, UserProfile } from "./types";
+import { supabaseAuth } from "./supabase";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -94,39 +95,102 @@ export const api = {
     }
   },
 
-  // Authentication Endpoints
+  // Authentication Endpoints (Supabase-backed with direct fallback)
   async register(email: string, password: string, name?: string): Promise<AuthTokens> {
-    const data = await request<AuthTokens>("/v1/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password, name }),
-    });
-    if (data?.access_token) {
-      storage.saveAuthToken(data.access_token);
-      if (data.user) storage.saveAuthUser(data.user);
+    try {
+      const data = await request<AuthTokens>("/v1/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password, name }),
+      });
+      if (data?.access_token) {
+        storage.saveAuthToken(data.access_token);
+        if (data.user) storage.saveAuthUser(data.user);
+      }
+      return data;
+    } catch (backendErr: any) {
+      // If backend is not running or network failed, fallback directly to Supabase client
+      if (backendErr instanceof ApiError && backendErr.status === 400) {
+        throw backendErr;
+      }
+      try {
+        const supaRes = await supabaseAuth.signUp(email, password, name);
+        const token = supaRes.session?.access_token || "supabase_session";
+        const user: UserProfile = supaRes.user || {
+          id: `usr_${Date.now()}`,
+          email,
+          name: name || null,
+          created_at: new Date().toISOString(),
+        };
+        storage.saveAuthToken(token);
+        storage.saveAuthUser(user);
+        return {
+          access_token: token,
+          token_type: "bearer",
+          user,
+        };
+      } catch (supaErr: any) {
+        throw new ApiError(400, supaErr.message || "Failed to register account");
+      }
     }
-    return data;
   },
 
   async login(email: string, password: string): Promise<AuthTokens> {
-    const data = await request<AuthTokens>("/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    if (data?.access_token) {
-      storage.saveAuthToken(data.access_token);
-      if (data.user) storage.saveAuthUser(data.user);
+    try {
+      const data = await request<AuthTokens>("/v1/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      if (data?.access_token) {
+        storage.saveAuthToken(data.access_token);
+        if (data.user) storage.saveAuthUser(data.user);
+      }
+      return data;
+    } catch (backendErr: any) {
+      if (backendErr instanceof ApiError && backendErr.status === 401) {
+        throw backendErr;
+      }
+      // If backend is unreachable, fallback to direct Supabase Auth
+      try {
+        const supaRes = await supabaseAuth.signIn(email, password);
+        const token = supaRes.session?.access_token || "supabase_session";
+        const user: UserProfile = supaRes.user || {
+          id: `usr_${Date.now()}`,
+          email,
+          name: null,
+          created_at: new Date().toISOString(),
+        };
+        storage.saveAuthToken(token);
+        storage.saveAuthUser(user);
+        return {
+          access_token: token,
+          token_type: "bearer",
+          user,
+        };
+      } catch (supaErr: any) {
+        throw new ApiError(401, supaErr.message || "Incorrect email or password.");
+      }
     }
-    return data;
   },
 
   async getMe(): Promise<UserProfile> {
-    const user = await request<UserProfile>("/v1/auth/me", {
-      method: "GET",
-    });
-    if (user) {
-      storage.saveAuthUser(user);
+    try {
+      const user = await request<UserProfile>("/v1/auth/me", {
+        method: "GET",
+      });
+      if (user) {
+        storage.saveAuthUser(user);
+      }
+      return user;
+    } catch {
+      const supaUser = await supabaseAuth.getCurrentUser();
+      if (supaUser) {
+        storage.saveAuthUser(supaUser);
+        return supaUser;
+      }
+      const cached = storage.getAuthUser();
+      if (cached) return cached;
+      throw new ApiError(401, "Not authenticated");
     }
-    return user;
   },
 
   async logout(): Promise<void> {
@@ -135,7 +199,11 @@ export const api = {
         method: "POST",
       });
     } catch {}
+    try {
+      await supabaseAuth.signOut();
+    } catch {}
     storage.clearAuthToken();
     storage.clearAuthUser();
   },
 };
+

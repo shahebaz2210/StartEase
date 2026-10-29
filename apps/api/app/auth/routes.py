@@ -16,7 +16,11 @@ from app.auth.security import (
     create_access_token,
     decode_access_token,
 )
-from app.auth.repository import get_user_repository, BaseUserRepository
+from app.auth.repository import (
+    get_user_repository,
+    BaseUserRepository,
+    SupabaseUserRepository,
+)
 
 logger = logging.getLogger("startease.auth.routes")
 
@@ -35,6 +39,14 @@ def get_current_user(
         )
     
     token = authorization.split("Bearer ", 1)[1].strip()
+
+    # 1. If Supabase repository is in use, verify with Supabase Auth endpoint
+    if hasattr(repo, "verify_token"):
+        supabase_user = repo.verify_token(token)
+        if supabase_user:
+            return supabase_user
+
+    # 2. Check local JWT
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(
@@ -76,15 +88,38 @@ def register(
             ).model_dump(),
         )
 
-    password_hash, salt = hash_password(user_data.password)
-    user_record = repo.create_user(
-        email=user_data.email,
-        password_hash=password_hash,
-        salt=salt,
-        name=user_data.name,
-    )
-
-    access_token = create_access_token(user_record["id"], user_record["email"])
+    if isinstance(repo, SupabaseUserRepository):
+        try:
+            user_record = repo.create_user_with_password(
+                email=user_data.email,
+                password=user_data.password,
+                name=user_data.name,
+            )
+            # Authenticate immediately to obtain access token
+            auth_result = repo.authenticate(user_data.email, user_data.password)
+            access_token = (
+                auth_result["access_token"]
+                if auth_result and "access_token" in auth_result
+                else create_access_token(user_record["id"], user_record["email"])
+            )
+        except Exception as e:
+            logger.error(f"Supabase registration error: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=AuthErrorResponse(
+                    error="REGISTRATION_FAILED",
+                    message=str(e),
+                ).model_dump(),
+            )
+    else:
+        password_hash, salt = hash_password(user_data.password)
+        user_record = repo.create_user(
+            email=user_data.email,
+            password_hash=password_hash,
+            salt=salt,
+            name=user_data.name,
+        )
+        access_token = create_access_token(user_record["id"], user_record["email"])
 
     return TokenResponse(
         access_token=access_token,
@@ -111,6 +146,28 @@ def login(
     repo: BaseUserRepository = Depends(get_user_repository),
 ):
     """Authenticates credentials and returns a secure JWT access token."""
+    if isinstance(repo, SupabaseUserRepository):
+        auth_result = repo.authenticate(credentials.email, credentials.password)
+        if not auth_result or not auth_result.get("access_token"):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content=AuthErrorResponse(
+                    error="INVALID_CREDENTIALS",
+                    message="Incorrect email or password. Please try again.",
+                ).model_dump(),
+            )
+        user_info = auth_result["user"]
+        return TokenResponse(
+            access_token=auth_result["access_token"],
+            token_type="bearer",
+            user=UserResponse(
+                id=user_info["id"],
+                email=user_info["email"],
+                name=user_info.get("name"),
+                created_at=user_info.get("created_at") or "",
+            ),
+        )
+
     user_record = repo.get_by_email(credentials.email)
     if not user_record:
         return JSONResponse(

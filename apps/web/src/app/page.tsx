@@ -138,6 +138,25 @@ export default function Home() {
     }
   };
 
+  // Helper to ensure we have a valid backend session ID before dispatching responses
+  const ensureSessionReady = async (sess: SessionData): Promise<SessionData> => {
+    if (sess.session_id && sess.session_id !== "null") {
+      return sess;
+    }
+    const taskText = sess.task || sess.step || "Current task";
+    const fresh = await api.createSession(taskText);
+    const updated: SessionData = {
+      ...sess,
+      session_id: fresh.session_id,
+      task: taskText,
+      step: fresh.step || sess.step,
+      app: fresh.app || sess.app,
+      status: (fresh.status || "step") as any,
+    };
+    updateSessionState(updated);
+    return updated;
+  };
+
   // 1. Welcome -> Guest
   const handleContinueAsGuest = () => {
     setCurrentScreen("decompose");
@@ -156,9 +175,15 @@ export default function Home() {
     try {
       const data = await api.createSession(task);
       const enriched: SessionData = {
-        ...data,
+        session_id: data.session_id,
         task: data.task || task,
+        status: data.status,
+        step: data.step,
+        explanation: data.explanation,
+        app: data.app,
+        variant: data.variant,
         deadline: deadline,
+        timestamp: Date.now(),
       };
 
       if (enriched.status === "crisis") {
@@ -198,21 +223,22 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.respond(session.session_id, "done");
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "done");
       if (res.status === "completed" || res.status === "complete") {
         const completedSession = {
-          ...session,
+          ...active,
           ...res,
-          task: res.task || session.task,
+          task: res.task || active.task,
           status: "completed" as const,
         };
         updateSessionState(completedSession);
         setCurrentScreen("complete");
       } else {
         const updatedSession = {
-          ...session,
+          ...active,
           ...res,
-          task: res.task || session.task,
+          task: res.task || active.task,
           variant: "normal" as const,
         };
         updateSessionState(updatedSession);
@@ -220,10 +246,19 @@ export default function Home() {
       }
     } catch (err: any) {
       console.error("Done step error:", err);
-      if (err?.status === 404 && session?.task) {
+      const taskText = session.task || session.step;
+      if (err?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSessionState({ ...fresh, deadline: session.deadline });
+          const fresh = await api.createSession(taskText);
+          const recovered: SessionData = {
+            ...session,
+            session_id: fresh.session_id,
+            task: taskText,
+            step: fresh.step,
+            app: fresh.app,
+            deadline: session.deadline,
+          };
+          updateSessionState(recovered);
           setCurrentScreen("step");
           return;
         } catch {}
@@ -243,16 +278,26 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.respond(session.session_id, "simpler_step");
-      const updated = { ...session, ...res, variant: "smaller" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "simpler_step");
+      const updated = { ...active, ...res, variant: "smaller" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err: any) {
       console.error("Simpler step error:", err);
-      if (err?.status === 404 && session?.task) {
+      const taskText = session.task || session.step;
+      if (err?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSessionState({ ...fresh, deadline: session.deadline });
+          const fresh = await api.createSession(taskText);
+          const recovered: SessionData = {
+            ...session,
+            session_id: fresh.session_id,
+            task: taskText,
+            step: fresh.step,
+            app: fresh.app,
+            deadline: session.deadline,
+          };
+          updateSessionState(recovered);
           setCurrentScreen("step");
           return;
         } catch {}
@@ -272,16 +317,26 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.respond(session.session_id, "confused");
-      const updated = { ...session, ...res, variant: "simpler" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "confused");
+      const updated = { ...active, ...res, variant: "simpler" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err: any) {
       console.error("Confused error:", err);
-      if (err?.status === 404 && session?.task) {
+      const taskText = session.task || session.step;
+      if (err?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSessionState({ ...fresh, deadline: session.deadline });
+          const fresh = await api.createSession(taskText);
+          const recovered: SessionData = {
+            ...session,
+            session_id: fresh.session_id,
+            task: taskText,
+            step: fresh.step,
+            app: fresh.app,
+            deadline: session.deadline,
+          };
+          updateSessionState(recovered);
           setCurrentScreen("step");
           return;
         } catch {}
@@ -301,16 +356,26 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.respond(session.session_id, "too_big");
-      const updated = { ...session, ...res, variant: "smaller" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "too_big");
+      const updated = { ...active, ...res, variant: "smaller" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err: any) {
       console.error("Too big error:", err);
-      if (err?.status === 404 && session?.task) {
+      const taskText = session.task || session.step;
+      if (err?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSessionState({ ...fresh, deadline: session.deadline });
+          const fresh = await api.createSession(taskText);
+          const recovered: SessionData = {
+            ...session,
+            session_id: fresh.session_id,
+            task: taskText,
+            step: fresh.step,
+            app: fresh.app,
+            deadline: session.deadline,
+          };
+          updateSessionState(recovered);
           setCurrentScreen("step");
           return;
         } catch {}
@@ -324,8 +389,9 @@ export default function Home() {
   const handleNotNow = async () => {
     if (!session) return;
     try {
-      const res = await api.respond(session.session_id, "not_now");
-      const updated = { ...session, ...res, status: "rest" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "not_now");
+      const updated = { ...active, ...res, status: "rest" as const };
       updateSessionState(updated);
       setCurrentScreen("rest");
     } catch (err) {
@@ -372,8 +438,9 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.resume(session.session_id, "same");
-      const updated = { ...session, ...res, status: "step" as const, variant: "normal" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.resume(active.session_id, "same");
+      const updated = { ...active, ...res, status: "step" as const, variant: "normal" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err) {
@@ -392,8 +459,9 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.resume(session.session_id, "smaller");
-      const updated = { ...session, ...res, status: "step" as const, variant: "smaller" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.resume(active.session_id, "smaller");
+      const updated = { ...active, ...res, status: "step" as const, variant: "smaller" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err) {
@@ -412,12 +480,15 @@ export default function Home() {
     setCurrentScreen("loading");
 
     try {
-      const res = await api.respond(session.session_id, "cant_use_app");
-      const updated = { ...session, ...res, variant: "normal" as const };
+      const active = await ensureSessionReady(session);
+      const res = await api.respond(active.session_id, "cant_use_app");
+      const updated = { ...active, ...res, variant: "normal" as const };
       updateSessionState(updated);
+      setIsCantUseAppOpen(false);
       setCurrentScreen("step");
     } catch (err) {
       console.error("Substitute app error:", err);
+      setIsCantUseAppOpen(false);
       setCurrentScreen("step");
     }
   };

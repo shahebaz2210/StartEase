@@ -199,6 +199,21 @@ export default function FloatPage() {
     window.addEventListener("pointercancel", onPointerUp);
   };
 
+  const ensureSession = async (sess: SessionData): Promise<SessionData> => {
+    if (sess.session_id && sess.session_id !== "null") return sess;
+    const taskText = sess.task || sess.step || "Current task";
+    const fresh = await api.createSession(taskText);
+    const updated: SessionData = {
+      ...sess,
+      session_id: fresh.session_id,
+      task: taskText,
+      step: fresh.step || sess.step,
+      app: fresh.app || sess.app,
+    };
+    updateSession(updated);
+    return updated;
+  };
+
   const handleDone = async () => {
     if (!session || isLoading) return;
     setIsLoading(true);
@@ -207,20 +222,23 @@ export default function FloatPage() {
       subtitle: "Getting your next gentle step ready.",
     });
     try {
-      const res = await api.respond(session.session_id, "done");
+      const active = await ensureSession(session);
+      const res = await api.respond(active.session_id, "done");
       const normalizedStatus = (res.status === "complete" || res.status === "completed") ? "completed" : res.status;
       updateSession({
+        ...active,
         ...res,
-        task: res.task || session.task,
+        task: res.task || active.task,
         status: normalizedStatus,
         variant: "normal",
       });
     } catch (e: any) {
       console.error(e);
-      if (e?.status === 404 && session?.task) {
+      const taskText = session?.task || session?.step;
+      if (e?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSession(fresh);
+          const fresh = await api.createSession(taskText);
+          updateSession({ ...session, ...fresh, task: taskText });
         } catch {}
       }
     } finally {
@@ -237,14 +255,16 @@ export default function FloatPage() {
       subtitle: "Putting this in clearer words and tinier actions.",
     });
     try {
-      const res = await api.respond(session.session_id, "simpler_step");
-      updateSession({ ...res, variant: "smaller" });
+      const active = await ensureSession(session);
+      const res = await api.respond(active.session_id, "simpler_step");
+      updateSession({ ...active, ...res, variant: "smaller" });
     } catch (e: any) {
       console.error(e);
-      if (e?.status === 404 && session?.task) {
+      const taskText = session?.task || session?.step;
+      if (e?.status === 404 && taskText) {
         try {
-          const fresh = await api.createSession(session.task);
-          updateSession(fresh);
+          const fresh = await api.createSession(taskText);
+          updateSession({ ...session, ...fresh, task: taskText });
         } catch {}
       }
     } finally {
@@ -264,8 +284,9 @@ export default function FloatPage() {
   const handleNotNow = async () => {
     if (!session || isLoading) return;
     try {
-      const res = await api.respond(session.session_id, "not_now");
-      updateSession({ ...res, status: "rest" });
+      const active = await ensureSession(session);
+      const res = await api.respond(active.session_id, "not_now");
+      updateSession({ ...active, ...res, status: "rest" });
     } catch (e) {
       updateSession({ status: "rest" });
     }
@@ -325,8 +346,9 @@ export default function FloatPage() {
       subtitle: mode === "smaller" ? "Breaking it into tinier, gentler actions." : "Picking up right where you left off.",
     });
     try {
-      const res = await api.resume(session.session_id, mode);
-      updateSession({ ...res, status: "step", variant: mode === "smaller" ? "smaller" : "normal" });
+      const active = await ensureSession(session);
+      const res = await api.resume(active.session_id, mode);
+      updateSession({ ...active, ...res, status: "step", variant: mode === "smaller" ? "smaller" : "normal" });
     } catch (e) {
       updateSession({ status: "step" });
     } finally {
