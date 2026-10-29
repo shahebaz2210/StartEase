@@ -132,6 +132,27 @@ export default function FloatPage() {
     };
   }, []);
 
+  // Synchronize preferences on float companion mount
+  useEffect(() => {
+    const prefs = storage.getPreferences();
+    if (typeof window !== "undefined") {
+      if (prefs.windowOpacity && (window as any).electronApi?.setOpacity) {
+        (window as any).electronApi.setOpacity(prefs.windowOpacity / 100);
+      }
+    }
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      if (prefs.calmMotion) {
+        root.classList.add("calm-motion");
+      }
+      if (prefs.textSize) {
+        root.classList.add(`text-size-${prefs.textSize}`);
+        root.style.fontSize =
+          prefs.textSize === "xlarge" ? "19px" : prefs.textSize === "large" ? "17.5px" : "16px";
+      }
+    }
+  }, []);
+
   const updateSession = (updated: Partial<SessionData>) => {
     if (!session) return;
     const next = { ...session, ...updated, lastUpdated: Date.now() };
@@ -236,13 +257,19 @@ export default function FloatPage() {
   const handleDone = async () => {
     if (!session || isLoading) return;
     setIsLoading(true);
-    setTransition({
-      title: "Moving forward...",
-      subtitle: "Getting your next gentle step ready.",
-    });
+
+    // Fallback timer: only flip to transition card if network takes longer than 350ms
+    const fallbackTimer = setTimeout(() => {
+      setTransition({
+        title: "Moving forward...",
+        subtitle: "Getting your next gentle step ready.",
+      });
+    }, 350);
+
     try {
       const active = await ensureSession(session);
       const res = await api.respond(active.session_id, "done");
+      clearTimeout(fallbackTimer);
       const normalizedStatus = (res.status === "complete" || res.status === "completed") ? "completed" : res.status;
       updateSession({
         ...active,
@@ -254,6 +281,7 @@ export default function FloatPage() {
         variant: "normal",
       });
     } catch (e: any) {
+      clearTimeout(fallbackTimer);
       console.error(e);
       const taskText = session?.task || session?.step;
       if (e?.status === 404 && taskText) {
@@ -263,6 +291,7 @@ export default function FloatPage() {
         } catch {}
       }
     } finally {
+      clearTimeout(fallbackTimer);
       setIsLoading(false);
       setTransition(null);
     }
@@ -361,15 +390,31 @@ export default function FloatPage() {
 
   const handleResume = async (mode: "same" | "smaller") => {
     if (!session || isLoading) return;
+    if (mode === "same") {
+      // Instant local resume from cache
+      const cached = storage.getCachedSteps(session.task);
+      updateSession({
+        ...session,
+        step: cached?.step || session.step,
+        explanation: cached?.explanation || session.explanation,
+        app: cached?.app || session.app,
+        status: "step",
+        variant: "normal",
+      });
+      // Silently sync with backend
+      ensureSession(session).then((active) => api.resume(active.session_id, "same")).catch(() => {});
+      return;
+    }
+
     setIsLoading(true);
     setTransition({
-      title: mode === "smaller" ? "Making this step smaller..." : "Resuming step...",
-      subtitle: mode === "smaller" ? "Breaking it into tinier, gentler actions." : "Picking up right where you left off.",
+      title: "Making this step smaller...",
+      subtitle: "Breaking it into tinier, gentler actions.",
     });
     try {
       const active = await ensureSession(session);
       const res = await api.resume(active.session_id, mode);
-      updateSession({ ...active, ...res, status: "step", variant: mode === "smaller" ? "smaller" : "normal" });
+      updateSession({ ...active, ...res, status: "step", variant: "smaller" });
     } catch (e) {
       updateSession({ status: "step" });
     } finally {

@@ -43,22 +43,29 @@
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Font size preferences classes */
+/* Font size preferences classes applied to html root */
+html.text-size-normal,
 .text-size-normal {
-  font-size: 1rem;
+  font-size: 16px;
 }
+html.text-size-large,
 .text-size-large {
-  font-size: 1.125rem;
+  font-size: 18px;
 }
+html.text-size-xlarge,
 .text-size-xlarge {
-  font-size: 1.25rem;
+  font-size: 20px;
 }
 
 /* Calm motion overrides */
-.calm-motion * {
+.calm-motion,
+.calm-motion *,
+html.calm-motion,
+html.calm-motion * {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* Card and container styling */

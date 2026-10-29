@@ -50,3 +50,14 @@ export interface AuthTokens {
   token_type: string;
   user: UserProfile;
 }
+
+export interface CachedTaskSteps {
+  session_id?: string;
+  task: string;
+  step?: string;
+  explanation?: string;
+  app?: SessionApp;
+  variant?: StepVariant;
+  stepsHistory?: string[];
+  timestamp: number;
+}

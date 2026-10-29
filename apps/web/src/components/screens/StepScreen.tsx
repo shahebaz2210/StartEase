@@ -24,6 +24,7 @@ interface StepScreenProps {
   onNotNow: () => void;
   onCantUseApp: () => void;
   showShortcuts?: boolean;
+  autoReadAloud?: boolean;
 }
 
 export function StepScreen({
@@ -35,10 +36,57 @@ export function StepScreen({
   onNotNow,
   onCantUseApp,
   showShortcuts = true,
+  autoReadAloud = false,
 }: StepScreenProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [activeAction, setActiveAction] = useState<"done" | "simpler" | "rest" | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Setup keyboard shortcuts 1, 2, 3, Space
+  // Auto read-aloud when step loads if enabled in preferences
+  useEffect(() => {
+    if (autoReadAloud && session.step && isSpeechSynthesisAvailable()) {
+      const textToSpeak = session.explanation
+        ? `${session.step}. ${session.explanation}`
+        : session.step;
+      setIsPlayingAudio(true);
+      speakText(textToSpeak, () => setIsPlayingAudio(false));
+    }
+    return () => {
+      stopSpeaking();
+      setIsPlayingAudio(false);
+    };
+  }, [session.step, autoReadAloud]);
+
+  // Reset transition state whenever a new step or variant arrives
+  useEffect(() => {
+    setActiveAction(null);
+    setIsTransitioning(false);
+  }, [session.step, session.variant]);
+
+  const handleDoneClick = () => {
+    if (activeAction) return;
+    setActiveAction("done");
+    setIsTransitioning(true);
+    onDone();
+  };
+
+  const handleSimplerClick = () => {
+    if (activeAction) return;
+    setActiveAction("simpler");
+    setIsTransitioning(true);
+    if (onSimplerStep) onSimplerStep();
+    else if (onTooBig) onTooBig();
+    else if (onConfused) onConfused();
+  };
+
+  const handleNotNowClick = () => {
+    if (activeAction) return;
+    setActiveAction("rest");
+    setIsTransitioning(true);
+    onNotNow();
+  };
+
+  // Setup keyboard shortcuts 1, 2, Space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't fire if user is typing in an input or textarea
@@ -54,21 +102,19 @@ export function StepScreen({
 
       if (e.key === "1") {
         e.preventDefault();
-        onDone();
+        handleDoneClick();
       } else if (e.key === "2") {
         e.preventDefault();
-        if (onSimplerStep) onSimplerStep();
-        else if (onTooBig) onTooBig();
-        else if (onConfused) onConfused();
+        handleSimplerClick();
       } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
-        onNotNow();
+        handleNotNowClick();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onDone, onSimplerStep, onConfused, onTooBig, onNotNow]);
+  }, [activeAction, onDone, onSimplerStep, onConfused, onTooBig, onNotNow]);
 
   const handleReadAloud = () => {
     if (!isSpeechSynthesisAvailable()) return;
@@ -131,8 +177,12 @@ export function StepScreen({
         )}
       </div>
 
-      {/* Main Focus Step Card matching 04-step.png */}
-      <div className="startease-card p-6 md:p-10 border border-[#D5E7DC] bg-white shadow-xl shadow-[#142D1E]/3 space-y-6">
+      {/* Main Focus Step Card with Optimistic Transition feedback */}
+      <div
+        className={`startease-card p-6 md:p-10 border border-[#D5E7DC] bg-white shadow-xl shadow-[#142D1E]/3 space-y-6 transition-all duration-150 ${
+          isTransitioning ? "opacity-80 scale-[0.998]" : "opacity-100 scale-100"
+        }`}
+      >
         {/* Header label with green dot */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -200,15 +250,26 @@ export function StepScreen({
             HOW DOES THIS STEP FEEL?
           </p>
 
-          {/* Primary "Done" Button */}
+          {/* Primary "Done" Button - Optimistic feedback on pointerdown/click */}
           <button
             type="button"
-            onClick={onDone}
-            className="w-full h-[52px] px-5 rounded-xl bg-[#315B41] hover:bg-[#284C35] text-white flex items-center justify-between shadow-xs transition-colors cursor-pointer"
+            onClick={handleDoneClick}
+            disabled={activeAction !== null}
+            className={`w-full h-[52px] px-5 rounded-xl text-white flex items-center justify-between shadow-xs transition-all duration-150 cursor-pointer ${
+              activeAction === "done"
+                ? "bg-[#244930] scale-[0.99] shadow-inner"
+                : "bg-[#315B41] hover:bg-[#284C35] active:scale-[0.99]"
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-white" />
-              <span className="text-[15px] font-semibold">Done</span>
+              <CheckCircle2
+                className={`w-5 h-5 text-white transition-transform ${
+                  activeAction === "done" ? "scale-110 text-emerald-200 animate-pulse" : ""
+                }`}
+              />
+              <span className="text-[15px] font-semibold">
+                {activeAction === "done" ? "Moving forward..." : "Done"}
+              </span>
             </div>
             <span className="text-xs text-[#A3CBA6] font-normal">
               Takes you to next tiny step {showShortcuts && "[1]"}
@@ -218,12 +279,23 @@ export function StepScreen({
           {/* Single Secondary Action: Simpler step */}
           <button
             type="button"
-            onClick={onSimplerStep || onTooBig || onConfused}
-            className="w-full h-[50px] px-5 rounded-xl bg-[#DEECE2] hover:bg-[#D1E3D6] text-[#1E3F29] font-semibold text-xs flex items-center justify-between transition-colors cursor-pointer"
+            onClick={handleSimplerClick}
+            disabled={activeAction !== null}
+            className={`w-full h-[50px] px-5 rounded-xl text-[#1E3F29] font-semibold text-xs flex items-center justify-between transition-all duration-150 cursor-pointer ${
+              activeAction === "simpler"
+                ? "bg-[#D1E3D6] scale-[0.99]"
+                : "bg-[#DEECE2] hover:bg-[#D1E3D6] active:scale-[0.99]"
+            }`}
           >
             <div className="flex items-center gap-2">
-              <Minimize2 className="w-4 h-4 text-[#1E3F29]" />
-              <span className="text-[14px]">Simpler step</span>
+              <Minimize2
+                className={`w-4 h-4 text-[#1E3F29] transition-transform ${
+                  activeAction === "simpler" ? "scale-110 animate-pulse" : ""
+                }`}
+              />
+              <span className="text-[14px]">
+                {activeAction === "simpler" ? "Finding simpler words..." : "Simpler step"}
+              </span>
             </div>
             <span className="text-xs text-[#5B7A68] font-normal">
               Makes it plainer and smaller {showShortcuts && "[2]"}
@@ -233,11 +305,18 @@ export function StepScreen({
           {/* Not now Button */}
           <button
             type="button"
-            onClick={onNotNow}
-            className="w-full h-[46px] px-4 rounded-xl bg-[#E7F3EB] hover:bg-[#DBEDE1] text-[#234930] font-medium text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            onClick={handleNotNowClick}
+            disabled={activeAction !== null}
+            className={`w-full h-[46px] px-4 rounded-xl text-[#234930] font-medium text-xs flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer ${
+              activeAction === "rest"
+                ? "bg-[#DBEDE1] scale-[0.99]"
+                : "bg-[#E7F3EB] hover:bg-[#DBEDE1] active:scale-[0.99]"
+            }`}
           >
-            <Pause className="w-3.5 h-3.5 text-[#5A7764]" />
-            <span>Not now • Pause and rest without losing progress</span>
+            <Pause className={`w-3.5 h-3.5 text-[#5A7764] ${activeAction === "rest" ? "animate-pulse" : ""}`} />
+            <span>
+              {activeAction === "rest" ? "Pausing gently..." : "Not now • Pause and rest without losing progress"}
+            </span>
             {showShortcuts && <span className="text-[#5A7764] text-[11px]">[Space]</span>}
           </button>
         </div>

@@ -37,6 +37,26 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<{ title: string; subtitle: string } | null>(null);
 
+  // Synchronize user preferences to document root and Electron window
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.remove("text-size-normal", "text-size-large", "text-size-xlarge");
+    root.classList.add(`text-size-${preferences.textSize}`);
+    root.style.fontSize =
+      preferences.textSize === "xlarge" ? "20px" : preferences.textSize === "large" ? "18px" : "16px";
+
+    if (preferences.calmMotion) {
+      root.classList.add("calm-motion");
+    } else {
+      root.classList.remove("calm-motion");
+    }
+
+    if (typeof window !== "undefined" && (window as any).electronApi?.setOpacity) {
+      (window as any).electronApi.setOpacity((preferences.windowOpacity || 100) / 100);
+    }
+  }, [preferences]);
+
   // Restore authenticated user profile on mount & handle Supabase auth state changes (e.g. Google OAuth)
   useEffect(() => {
     const cachedUser = storage.getAuthUser();
@@ -283,6 +303,31 @@ export default function Home() {
 
   // 2. Submit Task
   const handleSubmitTask = async (task: string, deadline: string | null) => {
+    const activeUid = user?.id || storage.getAuthUser()?.id;
+    const cached = storage.getCachedSteps(task, activeUid);
+
+    // Instant Local Cache hit (Optimization 4): render in 0ms if task is cached
+    if (cached && cached.step) {
+      const instantSession: SessionData = {
+        session_id: cached.session_id || "cached_" + Date.now(),
+        task: cached.task || task,
+        status: "step",
+        step: cached.step,
+        explanation: cached.explanation,
+        app: cached.app,
+        variant: cached.variant || "normal",
+        deadline: deadline,
+        timestamp: Date.now(),
+      };
+      updateSessionState(instantSession);
+      setCurrentScreen("step");
+      setActiveTab("focus");
+
+      // Silently sync session in the background
+      ensureSessionReady(instantSession).catch(() => {});
+      return;
+    }
+
     setLoadingMessage({
       title: "Finding a small first step...",
       subtitle: "Looking through tools to find the gentlest start for you.",
@@ -331,18 +376,24 @@ export default function Home() {
     }
   };
 
-  // 3. Step Action: Done
+  // 3. Step Action: Done (Optimistic UI - Zero screen flicker)
   const handleDone = async () => {
     if (!session) return;
-    setLoadingMessage({
-      title: "Moving forward...",
-      subtitle: "Getting your next gentle step ready.",
-    });
-    setCurrentScreen("loading");
+
+    // Fallback timer: only show loading screen if network takes longer than 350ms
+    const fallbackTimer = setTimeout(() => {
+      setLoadingMessage({
+        title: "Moving forward...",
+        subtitle: "Getting your next gentle step ready.",
+      });
+      setCurrentScreen("loading");
+    }, 350);
 
     try {
       const active = await ensureSessionReady(session);
       const res = await api.respond(active.session_id, "done");
+      clearTimeout(fallbackTimer);
+
       if (res.status === "completed" || res.status === "complete") {
         const completedSession: SessionData = {
           ...active,
@@ -366,6 +417,7 @@ export default function Home() {
         setCurrentScreen("step");
       }
     } catch (err: any) {
+      clearTimeout(fallbackTimer);
       console.error("Done step error:", err);
       const taskText = session.task || session.step;
       if (err?.status === 404 && taskText) {
@@ -389,22 +441,27 @@ export default function Home() {
     }
   };
 
-  // 4. Step Action: Simpler Step (combines Confused & Too Big)
+  // 4. Step Action: Simpler Step (Optimistic UI)
   const handleSimplerStep = async () => {
     if (!session) return;
-    setLoadingMessage({
-      title: "Making this step simpler...",
-      subtitle: "Putting this in clearer words and tinier actions.",
-    });
-    setCurrentScreen("loading");
+
+    const fallbackTimer = setTimeout(() => {
+      setLoadingMessage({
+        title: "Making this step simpler...",
+        subtitle: "Putting this in clearer words and tinier actions.",
+      });
+      setCurrentScreen("loading");
+    }, 350);
 
     try {
       const active = await ensureSessionReady(session);
       const res = await api.respond(active.session_id, "simpler_step");
+      clearTimeout(fallbackTimer);
       const updated = { ...active, ...res, variant: "smaller" as const };
       updateSessionState(updated);
       setCurrentScreen("step");
     } catch (err: any) {
+      clearTimeout(fallbackTimer);
       console.error("Simpler step error:", err);
       const taskText = session.task || session.step;
       if (err?.status === 404 && taskText) {
@@ -559,24 +616,29 @@ export default function Home() {
     }
   };
 
-  // 7. Resume Same Step
+  // 7. Resume Same Step (Instant Local Resume via Cache)
   const handleResumeSame = async () => {
     if (!session) return;
-    setLoadingMessage({
-      title: "Resuming your step...",
-      subtitle: "Picking up right where you left off.",
-    });
-    setCurrentScreen("loading");
+    const activeUid = user?.id || storage.getAuthUser()?.id;
+    const cached = storage.getCachedSteps(session.task, activeUid);
+    const resumedSession: SessionData = {
+      ...session,
+      step: cached?.step || session.step,
+      explanation: cached?.explanation || session.explanation,
+      app: cached?.app || session.app,
+      status: "step",
+      variant: "normal",
+    };
+    updateSessionState(resumedSession);
+    setCurrentScreen("step");
+    setActiveTab("focus");
 
+    // Silently notify backend in background
     try {
-      const active = await ensureSessionReady(session);
-      const res = await api.resume(active.session_id, "same");
-      const updated = { ...active, ...res, status: "step" as const, variant: "normal" as const };
-      updateSessionState(updated);
-      setCurrentScreen("step");
+      const active = await ensureSessionReady(resumedSession);
+      api.resume(active.session_id, "same").catch(() => {});
     } catch (err) {
-      console.error("Resume same error:", err);
-      setCurrentScreen("step");
+      console.error("Resume same background sync:", err);
     }
   };
 
@@ -702,7 +764,23 @@ export default function Home() {
               setCurrentScreen("step");
               setActiveTab("focus");
             } else {
-              handleSubmitTask(item.task, null);
+              const cached = storage.getCachedSteps(item.task, user?.id);
+              if (cached && cached.step) {
+                const restored: SessionData = {
+                  session_id: cached.session_id || item.id,
+                  task: cached.task,
+                  step: cached.step,
+                  app: cached.app,
+                  status: "step",
+                  variant: cached.variant || "normal",
+                  timestamp: Date.now(),
+                };
+                updateSessionState(restored);
+                setCurrentScreen("step");
+                setActiveTab("focus");
+              } else {
+                handleSubmitTask(item.task, null);
+              }
             }
           }}
         />
@@ -712,6 +790,7 @@ export default function Home() {
     if (activeTab === "preferences") {
       return (
         <PreferencesScreen
+          userId={user?.id}
           onPreferencesChange={(updated) => setPreferences(updated)}
         />
       );
@@ -766,6 +845,7 @@ export default function Home() {
             onNotNow={handleNotNow}
             onCantUseApp={() => setIsCantUseAppOpen(true)}
             showShortcuts={preferences.showShortcuts}
+            autoReadAloud={preferences.readAloud}
           />
         );
 

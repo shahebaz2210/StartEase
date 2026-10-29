@@ -6,17 +6,51 @@ import { storage } from "@/lib/storage";
 import { UserPreferences } from "@/lib/types";
 
 interface PreferencesScreenProps {
+  userId?: string;
   onPreferencesChange: (prefs: UserPreferences) => void;
 }
 
-export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProps) {
-  const [prefs, setPrefs] = useState<UserPreferences>(storage.getPreferences());
+export function PreferencesScreen({ userId, onPreferencesChange }: PreferencesScreenProps) {
+  const [prefs, setPrefs] = useState<UserPreferences>(() => storage.getPreferences(userId));
+  const [isElectron, setIsElectron] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsElectron(!!(window as any).electronApi);
+    }
+  }, []);
 
   const updatePreference = <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
     const updated = { ...prefs, [key]: value };
     setPrefs(updated);
-    storage.savePreferences(updated);
+    storage.savePreferences(updated, userId);
     onPreferencesChange(updated);
+
+    // Apply immediate system-level changes
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+
+      if (key === "textSize") {
+        root.classList.remove("text-size-normal", "text-size-large", "text-size-xlarge");
+        root.classList.add(`text-size-${value}`);
+        root.style.fontSize = value === "xlarge" ? "20px" : value === "large" ? "18px" : "16px";
+      }
+
+      if (key === "calmMotion") {
+        if (value) {
+          root.classList.add("calm-motion");
+        } else {
+          root.classList.remove("calm-motion");
+        }
+      }
+    }
+
+    // Direct Electron window opacity control
+    if (key === "windowOpacity" && typeof window !== "undefined") {
+      if ((window as any).electronApi?.setOpacity) {
+        (window as any).electronApi.setOpacity(Number(value) / 100);
+      }
+    }
   };
 
   return (
@@ -48,7 +82,7 @@ export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProp
                   key={size}
                   type="button"
                   onClick={() => updatePreference("textSize", size)}
-                  className={`py-2 px-3 rounded-xl text-xs font-medium capitalize flex items-center justify-center gap-1.5 transition-colors ${
+                  className={`py-2 px-3 rounded-xl text-xs font-medium capitalize flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                     prefs.textSize === size
                       ? "bg-[#2D5A3D] text-white"
                       : "bg-[#EFF7F1] text-[#4A5D50] hover:bg-[#E2EFE6]"
@@ -65,7 +99,7 @@ export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProp
           <div className="flex items-center justify-between py-2 border-t border-[#D3E4D8]/30">
             <div>
               <p className="text-sm font-semibold text-[#1A3323]">Calm motion</p>
-              <p className="text-xs text-[#718779]">Reduce all interface transitions and animations</p>
+              <p className="text-xs text-[#718779]">Reduce all interface transitions, animations, and pulses</p>
             </div>
             <input
               type="checkbox"
@@ -79,7 +113,7 @@ export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProp
           <div className="flex items-center justify-between py-2 border-t border-[#D3E4D8]/30">
             <div>
               <p className="text-sm font-semibold text-[#1A3323]">Read steps aloud</p>
-              <p className="text-xs text-[#718779]">Automatically speak the first tiny step</p>
+              <p className="text-xs text-[#718779]">Automatically speak the first tiny step when it appears</p>
             </div>
             <input
               type="checkbox"
@@ -93,7 +127,7 @@ export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProp
           <div className="flex items-center justify-between py-2 border-t border-[#D3E4D8]/30">
             <div>
               <p className="text-sm font-semibold text-[#1A3323]">Show keyboard shortcuts</p>
-              <p className="text-xs text-[#718779]">Display 1, 2, 3, Space guidance on screen</p>
+              <p className="text-xs text-[#718779]">Display 1, 2, Space guidance on step screens</p>
             </div>
             <input
               type="checkbox"
@@ -103,10 +137,15 @@ export function PreferencesScreen({ onPreferencesChange }: PreferencesScreenProp
             />
           </div>
 
-          {/* Window Opacity (Desktop Only) */}
+          {/* Window Opacity (Desktop Floating Window) */}
           <div className="space-y-2 py-2 border-t border-[#D3E4D8]/30">
             <div className="flex justify-between items-center text-xs">
-              <span className="font-semibold text-[#1A3323]">Window opacity (desktop floating window)</span>
+              <span className="font-semibold text-[#1A3323]">
+                Window opacity (desktop floating window){" "}
+                <span className="font-normal text-[#5A7764]">
+                  {isElectron ? "• Connected" : "• Active in desktop app"}
+                </span>
+              </span>
               <span className="font-mono text-[#2D5A3D] font-bold">{prefs.windowOpacity}%</span>
             </div>
             <input

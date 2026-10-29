@@ -1,9 +1,10 @@
-import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "./types";
+import { CachedTaskSteps, SessionData, TaskLogItem, UserPreferences, UserProfile } from "./types";
 
 const SESSION_KEY = "active_session";
 const PREFS_KEY = "user_preferences";
 const LOG_KEY = "gentle_log";
 const DRAFT_KEY = "task_draft";
+const STEP_CACHE_KEY = "step_cache";
 const AUTH_TOKEN_KEY = "startease_auth_token";
 const AUTH_USER_KEY = "startease_auth_user";
 
@@ -98,6 +99,23 @@ export const storage = {
     try {
       const key = resolveKey(SESSION_KEY, userId);
       localStorage.setItem(key, JSON.stringify(session));
+
+      // Keep step cache updated automatically for instant resume
+      if (session.task && session.step) {
+        this.saveCachedSteps(
+          session.task,
+          {
+            session_id: session.session_id,
+            task: session.task,
+            step: session.step,
+            explanation: session.explanation,
+            app: session.app,
+            variant: session.variant,
+            timestamp: Date.now(),
+          },
+          userId
+        );
+      }
     } catch (e) {
       console.warn("Storage error saving session:", e);
     }
@@ -113,6 +131,65 @@ export const storage = {
       const uid = getActiveUserId(userId);
       localStorage.removeItem(`startease_${uid}_${SESSION_KEY}`);
       localStorage.removeItem(`startease_${uid}_active_session`);
+      this.clearCachedSteps(undefined, userId);
+    } catch {}
+  },
+
+  // Step Memory Cache (User-Scoped, fast offline resume)
+  getCachedSteps(task: string, userId?: string): CachedTaskSteps | null {
+    if (typeof window === "undefined" || !task) return null;
+    try {
+      const key = resolveKey(STEP_CACHE_KEY, userId);
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const normTask = task.trim().toLowerCase();
+      return parsed[normTask] || null;
+    } catch {
+      return null;
+    }
+  },
+
+  saveCachedSteps(task: string, data: CachedTaskSteps, userId?: string): void {
+    if (typeof window === "undefined" || !task) return;
+    try {
+      const key = resolveKey(STEP_CACHE_KEY, userId);
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const normTask = task.trim().toLowerCase();
+      parsed[normTask] = {
+        ...data,
+        timestamp: Date.now(),
+      };
+      // Keep at most 20 recent cached tasks
+      const keys = Object.keys(parsed);
+      if (keys.length > 20) {
+        delete parsed[keys[0]];
+      }
+      localStorage.setItem(key, JSON.stringify(parsed));
+    } catch (e) {
+      console.warn("Storage error saving cached steps:", e);
+    }
+  },
+
+  clearCachedSteps(task?: string, userId?: string): void {
+    if (typeof window === "undefined") return;
+    try {
+      const key = resolveKey(STEP_CACHE_KEY, userId);
+      if (!task) {
+        localStorage.removeItem(key);
+        const uid = getActiveUserId(userId);
+        localStorage.removeItem(`startease_${uid}_${STEP_CACHE_KEY}`);
+        localStorage.removeItem("startease_step_cache");
+      } else {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const normTask = task.trim().toLowerCase();
+          delete parsed[normTask];
+          localStorage.setItem(key, JSON.stringify(parsed));
+        }
+      }
     } catch {}
   },
 
