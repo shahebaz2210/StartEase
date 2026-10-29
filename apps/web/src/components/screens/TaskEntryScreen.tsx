@@ -18,12 +18,14 @@ import { storage } from "@/lib/storage";
 import { SessionData } from "@/lib/types";
 
 interface TaskEntryScreenProps {
+  userId?: string;
   onSubmitTask: (task: string, deadline: string | null) => void;
   onResumeSavedTask: (session: SessionData) => void;
   onClearSavedTask: () => void;
 }
 
 export function TaskEntryScreen({
+  userId,
   onSubmitTask,
   onResumeSavedTask,
   onClearSavedTask,
@@ -36,19 +38,22 @@ export function TaskEntryScreen({
 
   useEffect(() => {
     // Load draft if any
-    const draft = storage.getDraft();
+    const draft = storage.getDraft(userId);
     if (draft) setTaskText(draft);
 
     // Check for paused task
-    const session = storage.getSession();
-    if (session && session.step && session.status !== "completed") {
+    const session = storage.getSession(userId);
+    const isDone = session && (session.status === "completed" || session.status === "complete");
+    if (session && session.step && !isDone && session.status !== "no_match" && session.status !== "crisis") {
       setSavedSession(session);
+    } else {
+      setSavedSession(null);
     }
-  }, []);
+  }, [userId]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTaskText(e.target.value);
-    storage.saveDraft(e.target.value);
+    storage.saveDraft(e.target.value, userId);
   };
 
   const handleSpeechToggle = () => {
@@ -63,7 +68,7 @@ export function TaskEntryScreen({
       (transcript) => {
         setTaskText((prev) => {
           const updated = prev ? `${prev} ${transcript}` : transcript;
-          storage.saveDraft(updated);
+          storage.saveDraft(updated, userId);
           return updated;
         });
       },
@@ -86,7 +91,7 @@ export function TaskEntryScreen({
     else if (selectedDeadline === "tomorrow") deadlineValue = "Tomorrow";
     else if (selectedDeadline === "custom") deadlineValue = customDeadline || "Later";
 
-    storage.saveDraft("");
+    storage.saveDraft("", userId);
     onSubmitTask(taskText.trim(), deadlineValue);
   };
 

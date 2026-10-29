@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { UserProfile, TaskLogItem } from "./types";
+import { UserProfile, TaskLogItem, SessionData, UserPreferences } from "./types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -160,6 +160,54 @@ export const supabaseDb = {
       }
     } catch (e) {
       console.warn("Error clearing task logs in Supabase:", e);
+    }
+  },
+
+  async fetchActiveSession(userId: string): Promise<SessionData | null> {
+    if (!supabaseUrl || !supabaseAnonKey || !userId || userId === "guest") return null;
+    try {
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .select("session_data")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        return null;
+      }
+      return data?.session_data || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async upsertActiveSession(session: SessionData, userId: string): Promise<void> {
+    if (!supabaseUrl || !supabaseAnonKey || !userId || userId === "guest") return;
+    try {
+      const payload = {
+        user_id: userId,
+        session_id: session.session_id,
+        session_data: session,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("user_sessions").upsert(payload);
+      if (error) {
+        console.warn("Could not upsert active session to Supabase:", error.message);
+      }
+    } catch (e) {
+      console.warn("Error upserting active session to Supabase:", e);
+    }
+  },
+
+  async clearActiveSession(userId: string): Promise<void> {
+    if (!supabaseUrl || !supabaseAnonKey || !userId || userId === "guest") return;
+    try {
+      const { error } = await supabase.from("user_sessions").delete().eq("user_id", userId);
+      if (error) {
+        console.warn("Could not clear active session in Supabase:", error.message);
+      }
+    } catch (e) {
+      console.warn("Error clearing active session in Supabase:", e);
     }
   },
 };

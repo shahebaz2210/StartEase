@@ -113,12 +113,10 @@ export default function Home() {
 
   // Restore session from localStorage on initial load and keep synchronized across windows
   useEffect(() => {
-    const syncFromStorage = () => {
-      const activeUid = user?.id || storage.getAuthUser()?.id;
-      const saved = storage.getSession(activeUid);
-      const prefs = storage.getPreferences(activeUid);
-      setPreferences(prefs);
+    let isCancelled = false;
 
+    const restoreSession = (saved: SessionData | null) => {
+      if (isCancelled) return;
       if (saved && saved.status !== "no_match" && saved.status !== "crisis") {
         setSession(saved);
         const isDone = saved.status === "completed" || saved.status === "complete";
@@ -135,28 +133,64 @@ export default function Home() {
       }
     };
 
-    // Initial check on mount
-    const activeUid = user?.id || storage.getAuthUser()?.id;
-    const initialSaved = storage.getSession(activeUid);
-    const initialPrefs = storage.getPreferences(activeUid);
-    setPreferences(initialPrefs);
-    const initialIsDone = initialSaved && (initialSaved.status === "completed" || initialSaved.status === "complete");
-    if (initialSaved && initialSaved.step && !initialIsDone && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
-      setSession(initialSaved);
-      if (initialSaved.status === "rest") {
-        setCurrentScreen("rest");
-        setActiveTab("focus");
-      } else {
-        setCurrentScreen("step");
-        setActiveTab("focus");
+    const syncFromStorage = async () => {
+      const activeUid = user?.id || storage.getAuthUser()?.id;
+      let saved = storage.getSession(activeUid);
+      const prefs = storage.getPreferences(activeUid);
+      setPreferences(prefs);
+
+      if (!saved && activeUid && activeUid !== "guest") {
+        try {
+          const cloud = await supabaseDb.fetchActiveSession(activeUid);
+          if (cloud && !isCancelled) {
+            saved = cloud;
+            storage.saveSession(cloud, activeUid);
+          }
+        } catch {}
       }
-    } else if (activeUid && activeUid !== "guest") {
-      // User is authenticated: proceed straight to task entry rather than welcome
-      setCurrentScreen("decompose");
-      setActiveTab("decompose");
-    } else {
-      setCurrentScreen("welcome");
-    }
+
+      restoreSession(saved);
+    };
+
+    // Initial check on mount
+    const loadInitial = async () => {
+      const activeUid = user?.id || storage.getAuthUser()?.id;
+      let initialSaved = storage.getSession(activeUid);
+      const initialPrefs = storage.getPreferences(activeUid);
+      setPreferences(initialPrefs);
+
+      if (!initialSaved && activeUid && activeUid !== "guest") {
+        try {
+          const cloud = await supabaseDb.fetchActiveSession(activeUid);
+          if (cloud && !isCancelled) {
+            initialSaved = cloud;
+            storage.saveSession(cloud, activeUid);
+          }
+        } catch {}
+      }
+
+      if (isCancelled) return;
+
+      const initialIsDone = initialSaved && (initialSaved.status === "completed" || initialSaved.status === "complete");
+      if (initialSaved && initialSaved.step && !initialIsDone && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
+        setSession(initialSaved);
+        if (initialSaved.status === "rest") {
+          setCurrentScreen("rest");
+          setActiveTab("focus");
+        } else {
+          setCurrentScreen("step");
+          setActiveTab("focus");
+        }
+      } else if (activeUid && activeUid !== "guest") {
+        // User is authenticated: proceed straight to task entry rather than welcome
+        setCurrentScreen("decompose");
+        setActiveTab("decompose");
+      } else {
+        setCurrentScreen("welcome");
+      }
+    };
+
+    loadInitial();
 
     window.addEventListener("storage", syncFromStorage);
     window.addEventListener("focus", syncFromStorage);
@@ -166,6 +200,7 @@ export default function Home() {
     }
 
     return () => {
+      isCancelled = true;
       window.removeEventListener("storage", syncFromStorage);
       window.removeEventListener("focus", syncFromStorage);
     };
@@ -199,9 +234,13 @@ export default function Home() {
       storage.addOrUpdateLog(logItem, uid);
       if (uid && uid !== "guest") {
         supabaseDb.upsertTaskLog(logItem, uid).catch(() => {});
+        supabaseDb.upsertActiveSession(newSession, uid).catch(() => {});
       }
     } else {
       storage.clearSession(uid);
+      if (uid && uid !== "guest") {
+        supabaseDb.clearActiveSession(uid).catch(() => {});
+      }
     }
   };
 
@@ -661,6 +700,7 @@ export default function Home() {
       case "decompose":
         return (
           <TaskEntryScreen
+            userId={user?.id}
             onSubmitTask={handleSubmitTask}
             onResumeSavedTask={(saved) => {
               setSession(saved);

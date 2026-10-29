@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { storage } from "@/lib/storage";
-import { SessionData } from "@/lib/types";
+import { supabaseDb } from "@/lib/supabase";
+import { SessionData, TaskLogItem } from "@/lib/types";
 
 export default function FloatPage() {
   const [session, setSession] = useState<SessionData | null>(null);
@@ -138,7 +139,7 @@ export default function FloatPage() {
     storage.saveSession(next);
     if (next.status !== "no_match" && next.status !== "crisis") {
       const isComplete = next.status === "completed" || next.status === "complete";
-      storage.addOrUpdateLog({
+      const logItem: TaskLogItem = {
         id: next.session_id,
         task: next.task,
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
@@ -146,7 +147,13 @@ export default function FloatPage() {
         lastStep: next.step || "",
         app: next.app,
         completed_at: new Date().toISOString(),
-      });
+      };
+      storage.addOrUpdateLog(logItem);
+      const user = storage.getAuthUser();
+      if (user?.id && user.id !== "guest") {
+        supabaseDb.upsertTaskLog(logItem, user.id).catch(() => {});
+        supabaseDb.upsertActiveSession(next as SessionData, user.id).catch(() => {});
+      }
     }
   };
 

@@ -67,3 +67,17 @@ ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own preferences"
   ON public.user_preferences FOR ALL
   USING (auth.uid() = user_id);
+
+-- 4. Active User Sessions Table (Syncs in-progress active task across relaunch & devices)
+CREATE TABLE IF NOT EXISTS public.user_sessions (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  session_data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own session"
+  ON public.user_sessions FOR ALL
+  USING (auth.uid() = user_id);
