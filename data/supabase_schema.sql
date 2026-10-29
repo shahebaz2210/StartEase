@@ -1,7 +1,7 @@
 -- StartEase Supabase Database Schema
--- Run this in your Supabase SQL Editor if you want persistent cloud storage for task logs and sessions.
+-- Run this in your Supabase SQL Editor to enable cloud storage for task logs, user sessions, and preferences.
 
--- 1. Profiles Table (Optional extension linked to Supabase Auth)
+-- 1. Profiles Table (Extension linked to Supabase Auth)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
@@ -21,7 +21,7 @@ CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
--- 2. Gentle Logs Table (Syncs tasks completed across devices)
+-- 2. Gentle Logs Table (Syncs completed/paused tasks across devices)
 CREATE TABLE IF NOT EXISTS public.task_logs (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
   read_aloud BOOLEAN DEFAULT false,
   show_shortcuts BOOLEAN DEFAULT true,
   window_opacity INTEGER DEFAULT 100,
+  dyslexia_friendly BOOLEAN DEFAULT false,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
