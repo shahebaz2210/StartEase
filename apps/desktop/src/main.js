@@ -44,7 +44,9 @@ function ensureBackendRunning() {
 
 // Path to static web export
 const WEB_OUT_DIR = path.join(__dirname, "../../web/out");
-const STATE_FILE = path.join(app.getPath("userData"), "window-state.json");
+const STATE_FILE = (app && typeof app.getPath === "function")
+  ? path.join(app.getPath("userData"), "window-state.json")
+  : path.join(__dirname, "window-state.json");
 const FLOAT_WIDTH = 360;
 const FLOAT_HEIGHT = 310;
 
