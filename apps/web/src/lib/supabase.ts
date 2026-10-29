@@ -270,7 +270,7 @@ export const supabaseDb = {
         dyslexia_friendly: prefs.dyslexiaFriendly,
         updated_at: new Date().toISOString(),
       };
-      const { error } = await supabase.from("user_preferences").upsert(payload);
+      const { error } = await supabase.from("user_preferences").upsert(payload, { onConflict: "user_id" });
       if (error) {
         console.warn("Could not upsert preferences to Supabase:", error.message);
       }

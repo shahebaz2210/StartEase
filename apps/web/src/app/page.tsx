@@ -68,6 +68,16 @@ export default function Home() {
     const cachedUser = storage.getAuthUser();
     if (cachedUser) {
       setUser(cachedUser);
+      if (cachedUser.id && cachedUser.id !== "guest") {
+        supabaseDb.fetchUserPreferences(cachedUser.id).then((cloud) => {
+          if (cloud) {
+            const local = storage.getPreferences(cachedUser.id);
+            const merged = { ...local, ...cloud };
+            storage.savePreferences(merged, cachedUser.id);
+            setPreferences(merged);
+          }
+        }).catch(() => {});
+      }
     }
     if (storage.getAuthToken()) {
       api
@@ -87,6 +97,14 @@ export default function Home() {
         storage.saveAuthToken(supaSession.access_token);
         storage.saveAuthUser(profile);
         setUser(profile);
+        supabaseDb.fetchUserPreferences(profile.id).then((cloud) => {
+          if (cloud) {
+            const local = storage.getPreferences(profile.id);
+            const merged = { ...local, ...cloud };
+            storage.savePreferences(merged, profile.id);
+            setPreferences(merged);
+          }
+        }).catch(() => {});
         setCurrentScreen("decompose");
         setActiveTab("decompose");
       }
@@ -101,8 +119,21 @@ export default function Home() {
     setUser(authenticatedUser);
     // Switch session and preferences to the newly authenticated user
     const userSession = storage.getSession(authenticatedUser.id);
-    const prefs = storage.getPreferences(authenticatedUser.id);
-    setPreferences(prefs);
+    const localPrefs = storage.getPreferences(authenticatedUser.id);
+    setPreferences(localPrefs);
+
+    // Sync preferences with Supabase cloud
+    if (authenticatedUser.id && authenticatedUser.id !== "guest") {
+      supabaseDb.fetchUserPreferences(authenticatedUser.id).then((cloud) => {
+        if (cloud) {
+          const merged = { ...localPrefs, ...cloud };
+          storage.savePreferences(merged, authenticatedUser.id);
+          setPreferences(merged);
+        } else {
+          supabaseDb.upsertUserPreferences(localPrefs, authenticatedUser.id).catch(() => {});
+        }
+      }).catch(() => {});
+    }
     const userIsDone = userSession && (userSession.status === "completed" || userSession.status === "complete");
     if (userSession && userSession.step && !userIsDone && userSession.status !== "no_match" && userSession.status !== "crisis") {
       setSession(userSession);
@@ -797,7 +828,12 @@ export default function Home() {
       return (
         <PreferencesScreen
           userId={user?.id}
-          onPreferencesChange={(updated) => setPreferences(updated)}
+          onPreferencesChange={(updated) => {
+            setPreferences(updated);
+            if (user?.id && user.id !== "guest") {
+              supabaseDb.upsertUserPreferences(updated, user.id).catch(() => {});
+            }
+          }}
         />
       );
     }

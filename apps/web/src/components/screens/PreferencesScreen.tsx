@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Sliders, Check } from "lucide-react";
 import { storage } from "@/lib/storage";
+import { supabaseDb } from "@/lib/supabase";
 import { UserPreferences } from "@/lib/types";
 
 interface PreferencesScreenProps {
@@ -18,13 +19,35 @@ export function PreferencesScreen({ userId, onPreferencesChange }: PreferencesSc
     if (typeof window !== "undefined") {
       setIsElectron(!!(window as any).electronApi);
     }
-  }, []);
+    // Fetch preferences from Supabase Cloud if signed in
+    if (userId && userId !== "guest") {
+      supabaseDb.fetchUserPreferences(userId).then((cloud) => {
+        if (cloud) {
+          setPrefs((current) => {
+            const merged = { ...current, ...cloud };
+            storage.savePreferences(merged, userId);
+            onPreferencesChange(merged);
+            return merged;
+          });
+        }
+      }).catch((err) => {
+        console.warn("Could not fetch user preferences from Supabase:", err);
+      });
+    }
+  }, [userId]);
 
   const updatePreference = <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
     const updated = { ...prefs, [key]: value };
     setPrefs(updated);
     storage.savePreferences(updated, userId);
     onPreferencesChange(updated);
+
+    // Sync to Supabase Cloud
+    if (userId && userId !== "guest") {
+      supabaseDb.upsertUserPreferences(updated, userId).catch((err) => {
+        console.warn("Could not sync preferences to Supabase:", err);
+      });
+    }
 
     // Apply immediate system-level changes
     if (typeof document !== "undefined") {
@@ -73,7 +96,9 @@ export function PreferencesScreen({ userId, onPreferencesChange }: PreferencesSc
               Make StartEase comfortable
             </h1>
             <p className="text-xs text-[#718779]">
-              These settings stay on this device only.
+              {userId && userId !== "guest"
+                ? "Synced to your private account across devices."
+                : "These settings stay on this device only."}
             </p>
           </div>
         </div>
