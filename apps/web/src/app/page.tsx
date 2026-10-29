@@ -624,47 +624,35 @@ export default function Home() {
     }
   };
 
-  // 10. Clear Session
+  // 10. Clear Session (Complete wipe: active task, drafts, and all task logs)
   const handleClearSession = async () => {
     const activeUid = user?.id || storage.getAuthUser()?.id;
     const currentSession = session || storage.getSession(activeUid);
 
-    // 1. Delete on backend server
+    // 1. Delete active session on backend server
     if (currentSession?.session_id) {
       await api.deleteSession(currentSession.session_id);
     }
 
-    // 2. Clear from local storage
+    // 2. Clear all local storage (active task, draft, and all task logs)
     storage.clearSession(activeUid);
     storage.clearDraft(activeUid);
+    storage.clearLog(activeUid);
 
-    // 3. Remove unfinished/paused active task from local logs
-    if (currentSession?.task) {
-      const logs = storage.getLog(activeUid);
-      const filtered = logs.filter(
-        (l) =>
-          l.id !== currentSession.session_id &&
-          l.task.trim().toLowerCase() !== currentSession.task.trim().toLowerCase()
-      );
-      storage.setLog(filtered, activeUid);
-    }
-
-    // 4. Clear from Supabase (await it to prevent window.onfocus race condition)
+    // 3. Clear from Supabase (both active session and all task logs)
     if (activeUid && activeUid !== "guest") {
       try {
         await supabaseDb.clearActiveSession(activeUid);
-        if (currentSession?.session_id) {
-          await supabase.from("task_logs").delete().eq("id", currentSession.session_id);
-        }
+        await supabaseDb.clearTaskLogs(activeUid);
       } catch (e) {
-        console.warn("Error clearing Supabase session:", e);
+        console.warn("Error clearing Supabase session & logs:", e);
       }
     }
 
-    // 5. Reset React state
+    // 4. Reset React state
     setSession(null);
 
-    // 6. Navigate to appropriate screen
+    // 5. Navigate to appropriate screen
     if (activeUid && activeUid !== "guest") {
       setCurrentScreen("decompose");
       setActiveTab("decompose");

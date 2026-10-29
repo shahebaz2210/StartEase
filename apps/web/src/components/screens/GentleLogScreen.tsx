@@ -15,14 +15,19 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
   const [logItems, setLogItems] = useState<TaskLogItem[]>([]);
 
   useEffect(() => {
+    const refreshLogs = () => {
+      const local = storage.getLog(userId);
+      setLogItems(local);
+    };
+
     // 1. Initial load from local user-scoped storage (auto-deduplicated)
-    const local = storage.getLog(userId);
-    setLogItems(local);
+    refreshLogs();
 
     // 2. If authenticated user, sync with Supabase cloud task_logs
     if (userId && userId !== "guest") {
       supabaseDb.fetchTaskLogs(userId).then((cloudLogs) => {
         if (cloudLogs && cloudLogs.length > 0) {
+          const local = storage.getLog(userId);
           // Combine local & cloud logs and deduplicate
           const combined = [...cloudLogs];
           for (const loc of local) {
@@ -36,6 +41,13 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
         }
       });
     }
+
+    window.addEventListener("focus", refreshLogs);
+    window.addEventListener("storage", refreshLogs);
+    return () => {
+      window.removeEventListener("focus", refreshLogs);
+      window.removeEventListener("storage", refreshLogs);
+    };
   }, [userId]);
 
   const handleClearLog = () => {
