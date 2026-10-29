@@ -95,40 +95,45 @@ export const api = {
     }
   },
 
-  // Authentication Endpoints (Supabase-backed with direct fallback)
+  // Authentication Endpoints (Direct Supabase Auth with backend sync)
   async register(email: string, password: string, name?: string): Promise<AuthTokens> {
     try {
-      const data = await request<AuthTokens>("/v1/auth/register", {
+      // 1. Direct Supabase Auth signup
+      const supaRes = await supabaseAuth.signUp(email, password, name);
+      const token = supaRes.session?.access_token || "supabase_session";
+      const user: UserProfile = supaRes.user || {
+        id: `usr_${Date.now()}`,
+        email,
+        name: name || null,
+        created_at: new Date().toISOString(),
+      };
+      storage.saveAuthToken(token);
+      storage.saveAuthUser(user);
+
+      // Silently sync with backend if running
+      request<AuthTokens>("/v1/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, password, name }),
-      });
-      if (data?.access_token) {
-        storage.saveAuthToken(data.access_token);
-        if (data.user) storage.saveAuthUser(data.user);
-      }
-      return data;
-    } catch (backendErr: any) {
-      // If backend is not running or network failed, fallback directly to Supabase client
-      if (backendErr instanceof ApiError && backendErr.status === 400) {
-        throw backendErr;
-      }
+      }).catch(() => {});
+
+      return {
+        access_token: token,
+        token_type: "bearer",
+        user,
+      };
+    } catch (supaErr: any) {
+      // Fallback to backend
       try {
-        const supaRes = await supabaseAuth.signUp(email, password, name);
-        const token = supaRes.session?.access_token || "supabase_session";
-        const user: UserProfile = supaRes.user || {
-          id: `usr_${Date.now()}`,
-          email,
-          name: name || null,
-          created_at: new Date().toISOString(),
-        };
-        storage.saveAuthToken(token);
-        storage.saveAuthUser(user);
-        return {
-          access_token: token,
-          token_type: "bearer",
-          user,
-        };
-      } catch (supaErr: any) {
+        const data = await request<AuthTokens>("/v1/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ email, password, name }),
+        });
+        if (data?.access_token) {
+          storage.saveAuthToken(data.access_token);
+          if (data.user) storage.saveAuthUser(data.user);
+        }
+        return data;
+      } catch {
         throw new ApiError(400, supaErr.message || "Failed to register account");
       }
     }
@@ -136,37 +141,42 @@ export const api = {
 
   async login(email: string, password: string): Promise<AuthTokens> {
     try {
-      const data = await request<AuthTokens>("/v1/auth/login", {
+      // 1. Direct Supabase Auth signin
+      const supaRes = await supabaseAuth.signIn(email, password);
+      const token = supaRes.session?.access_token || "supabase_session";
+      const user: UserProfile = supaRes.user || {
+        id: `usr_${Date.now()}`,
+        email,
+        name: null,
+        created_at: new Date().toISOString(),
+      };
+      storage.saveAuthToken(token);
+      storage.saveAuthUser(user);
+
+      // Silently sync with backend if running
+      request<AuthTokens>("/v1/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
-      });
-      if (data?.access_token) {
-        storage.saveAuthToken(data.access_token);
-        if (data.user) storage.saveAuthUser(data.user);
-      }
-      return data;
-    } catch (backendErr: any) {
-      if (backendErr instanceof ApiError && backendErr.status === 401) {
-        throw backendErr;
-      }
-      // If backend is unreachable, fallback to direct Supabase Auth
+      }).catch(() => {});
+
+      return {
+        access_token: token,
+        token_type: "bearer",
+        user,
+      };
+    } catch (supaErr: any) {
+      // Fallback to backend
       try {
-        const supaRes = await supabaseAuth.signIn(email, password);
-        const token = supaRes.session?.access_token || "supabase_session";
-        const user: UserProfile = supaRes.user || {
-          id: `usr_${Date.now()}`,
-          email,
-          name: null,
-          created_at: new Date().toISOString(),
-        };
-        storage.saveAuthToken(token);
-        storage.saveAuthUser(user);
-        return {
-          access_token: token,
-          token_type: "bearer",
-          user,
-        };
-      } catch (supaErr: any) {
+        const data = await request<AuthTokens>("/v1/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        if (data?.access_token) {
+          storage.saveAuthToken(data.access_token);
+          if (data.user) storage.saveAuthUser(data.user);
+        }
+        return data;
+      } catch {
         throw new ApiError(401, supaErr.message || "Incorrect email or password.");
       }
     }
