@@ -136,6 +136,18 @@ export default function FloatPage() {
     const next = { ...session, ...updated, lastUpdated: Date.now() };
     setSession(next);
     storage.saveSession(next);
+    if (next.status !== "no_match" && next.status !== "crisis") {
+      const isComplete = next.status === "completed" || next.status === "complete";
+      storage.addOrUpdateLog({
+        id: next.session_id,
+        task: next.task,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        status: isComplete ? "Finished" : "Paused",
+        lastStep: next.step || "",
+        app: next.app,
+        completed_at: new Date().toISOString(),
+      });
+    }
   };
 
   // Window drag handler for Electron frameless transparent window
@@ -229,6 +241,8 @@ export default function FloatPage() {
         ...active,
         ...res,
         task: res.task || active.task,
+        step: res.step || active.step,
+        app: res.app || active.app,
         status: normalizedStatus,
         variant: "normal",
       });

@@ -62,7 +62,8 @@ export default function Home() {
     const userSession = storage.getSession(authenticatedUser.id);
     const prefs = storage.getPreferences(authenticatedUser.id);
     setPreferences(prefs);
-    if (userSession && userSession.step && userSession.status !== "completed" && userSession.status !== "no_match" && userSession.status !== "crisis") {
+    const userIsDone = userSession && (userSession.status === "completed" || userSession.status === "complete");
+    if (userSession && userSession.step && !userIsDone && userSession.status !== "no_match" && userSession.status !== "crisis") {
       setSession(userSession);
       if (userSession.status === "rest") {
         setCurrentScreen("rest");
@@ -85,7 +86,8 @@ export default function Home() {
     const guestSession = storage.getSession("guest");
     const guestPrefs = storage.getPreferences("guest");
     setPreferences(guestPrefs);
-    if (guestSession && guestSession.step && guestSession.status !== "completed" && guestSession.status !== "no_match" && guestSession.status !== "crisis") {
+    const guestIsDone = guestSession && (guestSession.status === "completed" || guestSession.status === "complete");
+    if (guestSession && guestSession.step && !guestIsDone && guestSession.status !== "no_match" && guestSession.status !== "crisis") {
       setSession(guestSession);
     } else {
       setSession(null);
@@ -102,15 +104,16 @@ export default function Home() {
       const prefs = storage.getPreferences(activeUid);
       setPreferences(prefs);
 
-      if (saved && saved.step && saved.status !== "no_match" && saved.status !== "crisis") {
+      if (saved && saved.status !== "no_match" && saved.status !== "crisis") {
         setSession(saved);
-        if (saved.status === "completed") {
+        const isDone = saved.status === "completed" || saved.status === "complete";
+        if (isDone) {
           setCurrentScreen("complete");
           setActiveTab("focus");
         } else if (saved.status === "rest") {
           setCurrentScreen("rest");
           setActiveTab("focus");
-        } else {
+        } else if (saved.step) {
           setCurrentScreen("step");
           setActiveTab("focus");
         }
@@ -122,7 +125,8 @@ export default function Home() {
     const initialSaved = storage.getSession(activeUid);
     const initialPrefs = storage.getPreferences(activeUid);
     setPreferences(initialPrefs);
-    if (initialSaved && initialSaved.step && initialSaved.status !== "completed" && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
+    const initialIsDone = initialSaved && (initialSaved.status === "completed" || initialSaved.status === "complete");
+    if (initialSaved && initialSaved.step && !initialIsDone && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
       setSession(initialSaved);
       if (initialSaved.status === "rest") {
         setCurrentScreen("rest");
@@ -155,13 +159,22 @@ export default function Home() {
     if (newSession && newSession.status !== "no_match" && newSession.status !== "crisis") {
       storage.saveSession(newSession, uid);
       // Update Gentle Log
+      const isComplete = newSession.status === "completed" || newSession.status === "complete";
+      const existingLogs = storage.getLog(uid);
+      const existingLog = existingLogs.find((l) => l.id === newSession.session_id);
+      const finalStatus = isComplete
+        ? "Finished"
+        : (newSession.status === "rest" && existingLog?.status === "Finished")
+        ? "Finished"
+        : "Paused";
+
       const logItem: TaskLogItem = {
         id: newSession.session_id,
         task: newSession.task,
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        status: newSession.status === "completed" ? "Finished" : "Paused",
-        lastStep: newSession.step || "",
-        app: newSession.app,
+        status: finalStatus,
+        lastStep: newSession.step || existingLog?.lastStep || "",
+        app: newSession.app || existingLog?.app,
         completed_at: new Date().toISOString(),
       };
       storage.addOrUpdateLog(logItem, uid);
@@ -261,20 +274,23 @@ export default function Home() {
       const active = await ensureSessionReady(session);
       const res = await api.respond(active.session_id, "done");
       if (res.status === "completed" || res.status === "complete") {
-        const completedSession = {
+        const completedSession: SessionData = {
           ...active,
           ...res,
           task: res.task || active.task,
-          status: "completed" as const,
+          step: res.step || active.step,
+          app: res.app || active.app,
+          status: "completed",
         };
         updateSessionState(completedSession);
         setCurrentScreen("complete");
       } else {
-        const updatedSession = {
+        const updatedSession: SessionData = {
           ...active,
           ...res,
           task: res.task || active.task,
-          variant: "normal" as const,
+          status: "step",
+          variant: "normal",
         };
         updateSessionState(updatedSession);
         setCurrentScreen("step");
@@ -447,6 +463,16 @@ export default function Home() {
     try {
       const nextTitle = session.next_task_title;
       const res = await api.nextTask(session.session_id);
+      if (res.status === "completed" || res.status === "complete") {
+        const allCompleted: SessionData = {
+          ...session,
+          ...res,
+          status: "completed",
+        };
+        updateSessionState(allCompleted);
+        setCurrentScreen("complete");
+        return;
+      }
       const updated: SessionData = {
         ...session,
         ...res,
@@ -542,9 +568,13 @@ export default function Home() {
   const handleTabChange = (tab: "focus" | "decompose" | "log" | "preferences") => {
     setActiveTab(tab);
     if (tab === "focus") {
-      if (session && session.step && session.status !== "completed") {
+      const isComplete = session && (session.status === "completed" || session.status === "complete");
+      if (session && !isComplete) {
         if (session.status === "rest") setCurrentScreen("rest");
-        else setCurrentScreen("step");
+        else if (session.step) setCurrentScreen("step");
+        else setCurrentScreen("decompose");
+      } else if (isComplete) {
+        setCurrentScreen("complete");
       } else {
         setCurrentScreen("decompose");
       }
@@ -754,7 +784,7 @@ export default function Home() {
           onTabChange={handleTabChange}
           onOpenPrivacy={() => setIsPrivacyOpen(true)}
           onClearSession={handleClearSession}
-          hasActiveTask={!!session && session.status !== "completed"}
+          hasActiveTask={!!session && session.status !== "completed" && session.status !== "complete"}
           user={user}
           onOpenAuth={(mode) => {
             setAuthModalMode(mode || "login");

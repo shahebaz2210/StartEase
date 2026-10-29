@@ -86,9 +86,9 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
           </div>
         ) : (
           <div className="space-y-3">
-            {logItems.map((item) => (
+            {logItems.map((item, idx) => (
               <div
-                key={item.id}
+                key={`${item.id}_${item.task || idx}`}
                 className="p-4 rounded-xl bg-[#EFF7F1] border border-[#D3E4D8]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
                 <div className="space-y-1">

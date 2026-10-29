@@ -139,11 +139,21 @@ export const storage = {
     try {
       const key = resolveKey(LOG_KEY, userId);
       const current = this.getLog(userId);
-      const existingIndex = current.findIndex((i) => i.id === item.id);
+      const existingIndex = current.findIndex(
+        (i) => i.id === item.id && (i.task === item.task || !i.task)
+      );
       let updated: TaskLogItem[];
       if (existingIndex >= 0) {
         updated = [...current];
-        updated[existingIndex] = { ...updated[existingIndex], ...item };
+        const existing = updated[existingIndex];
+        const keepFinished = existing.status === "Finished" && item.status !== "Finished";
+        updated[existingIndex] = {
+          ...existing,
+          ...item,
+          status: keepFinished ? "Finished" : item.status,
+          lastStep: item.lastStep || existing.lastStep || "",
+          app: item.app || existing.app,
+        };
       } else {
         updated = [item, ...current];
       }

@@ -207,10 +207,14 @@ def respond_to_step(
         session_manager.save()
         if not has_more:
             logger.info("Task completed.")
+            last_step = session.steps[-1] if session.steps else None
+            app_obj = App(name=session.app_name, reason=session.app_reason) if session.app_name else None
             return StepResponse(
                 session_id=session.session_id,
                 status=StatusEnum.COMPLETE,
                 task=session.task,
+                step=last_step,
+                app=app_obj,
                 has_more_tasks=session.has_more_tasks,
                 next_task_title=session.next_task_title,
             )
