@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { AuthTokens, UserProfile } from "./types";
-import { supabaseAuth } from "./supabase";
+import { supabaseAuth, supabaseDb, isSupabaseConfigured } from "./supabase";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -95,91 +95,101 @@ export const api = {
     }
   },
 
-  // Authentication Endpoints (Direct Supabase Auth with backend sync)
+  // Authentication Endpoints (Direct Supabase Auth Cloud First)
   async register(email: string, password: string, name?: string): Promise<AuthTokens> {
-    try {
-      // 1. Direct Supabase Auth signup
-      const supaRes = await supabaseAuth.signUp(email, password, name);
-      const token = supaRes.session?.access_token || "supabase_session";
-      const user: UserProfile = supaRes.user || {
-        id: `usr_${Date.now()}`,
-        email,
-        name: name || null,
-        created_at: new Date().toISOString(),
-      };
-      storage.saveAuthToken(token);
-      storage.saveAuthUser(user);
-
-      // Silently sync with backend if running
-      request<AuthTokens>("/v1/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ email, password, name }),
-      }).catch(() => {});
-
-      return {
-        access_token: token,
-        token_type: "bearer",
-        user,
-      };
-    } catch (supaErr: any) {
-      // Fallback to backend
+    if (isSupabaseConfigured) {
       try {
-        const data = await request<AuthTokens>("/v1/auth/register", {
-          method: "POST",
-          body: JSON.stringify({ email, password, name }),
-        });
-        if (data?.access_token) {
-          storage.saveAuthToken(data.access_token);
-          if (data.user) storage.saveAuthUser(data.user);
+        const supaRes = await supabaseAuth.signUp(email, password, name);
+        if (!supaRes.user) {
+          throw new ApiError(400, "Registration did not return a user profile.");
         }
-        return data;
-      } catch {
-        throw new ApiError(400, supaErr.message || "Failed to register account");
+
+        const token = supaRes.session?.access_token || "";
+        const user: UserProfile = supaRes.user;
+
+        if (token) {
+          storage.saveAuthToken(token);
+        }
+        storage.saveAuthUser(user);
+
+        // Sync profile to Supabase database if session exists
+        if (token) {
+          supabaseDb.upsertProfile(user).catch(() => {});
+        }
+
+        return {
+          access_token: token || "pending_confirmation",
+          token_type: "bearer",
+          user,
+        };
+      } catch (supaErr: any) {
+        const msg = supaErr?.message || "Failed to register account with Supabase.";
+        if (msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("over_email_send_rate_limit")) {
+          throw new ApiError(
+            429,
+            "Supabase email rate limit reached. In your Supabase dashboard (Authentication -> Providers -> Email), toggle 'Confirm email' to OFF."
+          );
+        }
+        throw new ApiError(400, msg);
       }
     }
+
+    // Fallback only if Supabase is completely unconfigured (offline / local dev mode)
+    const data = await request<AuthTokens>("/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name }),
+    });
+    if (data?.access_token) {
+      storage.saveAuthToken(data.access_token);
+      if (data.user) storage.saveAuthUser(data.user);
+    }
+    return data;
   },
 
   async login(email: string, password: string): Promise<AuthTokens> {
-    try {
-      // 1. Direct Supabase Auth signin
-      const supaRes = await supabaseAuth.signIn(email, password);
-      const token = supaRes.session?.access_token || "supabase_session";
-      const user: UserProfile = supaRes.user || {
-        id: `usr_${Date.now()}`,
-        email,
-        name: null,
-        created_at: new Date().toISOString(),
-      };
-      storage.saveAuthToken(token);
-      storage.saveAuthUser(user);
-
-      // Silently sync with backend if running
-      request<AuthTokens>("/v1/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      }).catch(() => {});
-
-      return {
-        access_token: token,
-        token_type: "bearer",
-        user,
-      };
-    } catch (supaErr: any) {
-      // Fallback to backend
+    if (isSupabaseConfigured) {
       try {
-        const data = await request<AuthTokens>("/v1/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
-        if (data?.access_token) {
-          storage.saveAuthToken(data.access_token);
-          if (data.user) storage.saveAuthUser(data.user);
+        const supaRes = await supabaseAuth.signIn(email, password);
+        const token = supaRes.session?.access_token;
+        if (!token) {
+          throw new ApiError(401, "No active session returned. Please confirm your email in Supabase.");
         }
-        return data;
-      } catch {
-        throw new ApiError(401, supaErr.message || "Incorrect email or password.");
+        const user: UserProfile = supaRes.user || {
+          id: supaRes.session.user?.id || `usr_${Date.now()}`,
+          email,
+          name: supaRes.session.user?.user_metadata?.name || null,
+          created_at: new Date().toISOString(),
+        };
+        storage.saveAuthToken(token);
+        storage.saveAuthUser(user);
+
+        return {
+          access_token: token,
+          token_type: "bearer",
+          user,
+        };
+      } catch (supaErr: any) {
+        const msg = supaErr?.message || "Incorrect email or password.";
+        if (msg.toLowerCase().includes("email not confirmed")) {
+          throw new ApiError(
+            400,
+            "Email not confirmed. Please click the link sent to your email, or toggle 'Confirm email' OFF in your Supabase dashboard."
+          );
+        }
+        throw new ApiError(401, msg);
       }
     }
+
+    // Fallback only if Supabase is completely unconfigured (offline / local dev mode)
+    const data = await request<AuthTokens>("/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    if (data?.access_token) {
+      storage.saveAuthToken(data.access_token);
+      if (data.user) storage.saveAuthUser(data.user);
+    }
+    return data;
   },
 
   async signInWithGoogle() {

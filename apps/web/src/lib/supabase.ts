@@ -4,6 +4,12 @@ import { UserProfile, TaskLogItem, SessionData, UserPreferences } from "./types"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl.startsWith("http")
+);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -208,6 +214,68 @@ export const supabaseDb = {
       }
     } catch (e) {
       console.warn("Error clearing active session in Supabase:", e);
+    }
+  },
+
+  async upsertProfile(user: UserProfile): Promise<void> {
+    if (!supabaseUrl || !supabaseAnonKey || !user?.id || user.id === "guest") return;
+    try {
+      const { error } = await supabase.from("profiles").upsert({
+        id: user.id,
+        email: user.email,
+        name: user.name || null,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        console.warn("Could not upsert profile to Supabase:", error.message);
+      }
+    } catch (e) {
+      console.warn("Error upserting profile to Supabase:", e);
+    }
+  },
+
+  async fetchUserPreferences(userId: string): Promise<UserPreferences | null> {
+    if (!supabaseUrl || !supabaseAnonKey || !userId || userId === "guest") return null;
+    try {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error || !data) return null;
+      return {
+        textSize: data.text_size || "normal",
+        calmMotion: Boolean(data.calm_motion),
+        readAloud: Boolean(data.read_aloud),
+        showShortcuts: data.show_shortcuts !== false,
+        windowOpacity: typeof data.window_opacity === "number" ? data.window_opacity : 100,
+        dyslexiaFriendly: Boolean(data.dyslexia_friendly),
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  async upsertUserPreferences(prefs: UserPreferences, userId: string): Promise<void> {
+    if (!supabaseUrl || !supabaseAnonKey || !userId || userId === "guest") return;
+    try {
+      const payload = {
+        user_id: userId,
+        text_size: prefs.textSize,
+        calm_motion: prefs.calmMotion,
+        read_aloud: prefs.readAloud,
+        show_shortcuts: prefs.showShortcuts,
+        window_opacity: prefs.windowOpacity,
+        dyslexia_friendly: prefs.dyslexiaFriendly,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("user_preferences").upsert(payload);
+      if (error) {
+        console.warn("Could not upsert preferences to Supabase:", error.message);
+      }
+    } catch (e) {
+      console.warn("Error upserting preferences to Supabase:", e);
     }
   },
 };
