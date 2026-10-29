@@ -13,6 +13,15 @@ interface GentleLogScreenProps {
 
 export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) {
   const [logItems, setLogItems] = useState<TaskLogItem[]>([]);
+  const [resumingId, setResumingId] = useState<string | null>(null);
+
+  const handleResumeClick = (item: TaskLogItem) => {
+    if (resumingId) return;
+    setResumingId(item.id);
+    setTimeout(() => {
+      onResumeTask(item);
+    }, 280);
+  };
 
   useEffect(() => {
     const refreshLogs = () => {
@@ -99,10 +108,18 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
           </div>
         ) : (
           <div className="space-y-3">
+            {resumingId && (
+              <div className="bg-[#EAF5EE] border border-[#2D5A3D]/25 rounded-xl p-3.5 flex items-center gap-3 text-xs text-[#1B3F27] animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2D5A3D] animate-ping shrink-0" />
+                <span className="font-medium">
+                  Picking up your task right at your saved step...
+                </span>
+              </div>
+            )}
             {logItems.map((item, idx) => (
               <div
                 key={`${item.id}_${item.task || idx}`}
-                className="p-4 rounded-xl bg-[#EFF7F1] border border-[#D3E4D8]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                className="p-4 rounded-xl bg-[#EFF7F1] border border-[#D3E4D8]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:border-[#C5DDCB]"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -128,11 +145,25 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
                 {item.status === "Paused" && (
                   <button
                     type="button"
-                    onClick={() => onResumeTask(item)}
-                    className="py-1.5 px-3 rounded-lg btn-primary-dark text-xs font-medium flex items-center gap-1.5 self-start sm:self-center shadow-xs"
+                    disabled={resumingId !== null}
+                    onClick={() => handleResumeClick(item)}
+                    className={`py-2 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 self-start sm:self-center transition-all duration-150 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/30 ${
+                      resumingId === item.id
+                        ? "bg-[#244930] text-emerald-100 scale-95 shadow-inner"
+                        : "btn-primary-dark hover:scale-[1.03] active:scale-95"
+                    }`}
                   >
-                    <span>Resume</span>
-                    <ArrowRight className="w-3 h-3" />
+                    {resumingId === item.id ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-emerald-200/40 border-t-emerald-200 rounded-full animate-spin" />
+                        <span>Resuming...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Resume</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </>
+                    )}
                   </button>
                 )}
               </div>

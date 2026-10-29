@@ -19,7 +19,7 @@ import { AuthModal } from "@/components/modals/AuthModal";
 import { api, ApiError } from "@/lib/api";
 import { storage } from "@/lib/storage";
 import { supabase, supabaseDb, mapSupabaseUser } from "@/lib/supabase";
-import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "@/lib/types";
+import { SessionData, SessionApp, TaskLogItem, UserPreferences, UserProfile } from "@/lib/types";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"focus" | "decompose" | "log" | "preferences">("decompose");
@@ -791,33 +791,64 @@ export default function Home() {
         <GentleLogScreen
           userId={user?.id}
           onResumeTask={(item) => {
-            const saved = storage.getSession(user?.id);
+            const activeUid = user?.id || storage.getAuthUser()?.id;
+            const toSessionApp = (a?: SessionApp | string): SessionApp | undefined => {
+              if (!a) return undefined;
+              return typeof a === "string" ? { name: a } : a;
+            };
+            let targetSession: SessionData | null = null;
+            const saved = storage.getSession(activeUid);
             if (
               saved &&
               (saved.session_id === item.id ||
                 (saved.task && saved.task.trim().toLowerCase() === item.task.trim().toLowerCase()))
             ) {
-              setSession(saved);
-              setCurrentScreen("step");
-              setActiveTab("focus");
+              targetSession = {
+                ...saved,
+                step: saved.step || item.lastStep,
+                app: saved.app || toSessionApp(item.app),
+                status: "step",
+                variant: saved.variant || "normal",
+              };
             } else {
-              const cached = storage.getCachedSteps(item.task, user?.id);
+              const cached = storage.getCachedSteps(item.task, activeUid);
               if (cached && cached.step) {
-                const restored: SessionData = {
+                targetSession = {
                   session_id: cached.session_id || item.id,
-                  task: cached.task,
+                  task: cached.task || item.task,
                   step: cached.step,
-                  app: cached.app,
+                  app: cached.app || toSessionApp(item.app),
                   status: "step",
                   variant: cached.variant || "normal",
                   timestamp: Date.now(),
                 };
-                updateSessionState(restored);
-                setCurrentScreen("step");
-                setActiveTab("focus");
-              } else {
-                handleSubmitTask(item.task, null);
+              } else if (item.lastStep) {
+                targetSession = {
+                  session_id: item.id || "resumed_" + Date.now(),
+                  task: item.task,
+                  step: item.lastStep,
+                  app: toSessionApp(item.app),
+                  status: "step",
+                  variant: "normal",
+                  timestamp: Date.now(),
+                };
               }
+            }
+
+            if (targetSession && targetSession.step) {
+              updateSessionState(targetSession);
+              setCurrentScreen("step");
+              setActiveTab("focus");
+
+              if (
+                targetSession.session_id &&
+                !targetSession.session_id.startsWith("resumed_") &&
+                !targetSession.session_id.startsWith("cached_")
+              ) {
+                api.resume(targetSession.session_id, "same").catch(() => {});
+              }
+            } else {
+              handleSubmitTask(item.task, null);
             }
           }}
         />
