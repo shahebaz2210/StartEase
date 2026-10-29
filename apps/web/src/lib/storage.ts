@@ -33,6 +33,46 @@ function resolveKey(baseKey: string, explicitUserId?: string): string {
   return `startease_${uid}_${baseKey}`;
 }
 
+export function deduplicateLogs(items: TaskLogItem[]): TaskLogItem[] {
+  if (!Array.isArray(items)) return [];
+  const map = new Map<string, TaskLogItem>();
+
+  for (const item of items) {
+    if (!item || !item.task) continue;
+    const key = item.task.trim().toLowerCase();
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+
+    const existingTime = existing.completed_at ? new Date(existing.completed_at).getTime() : 0;
+    const itemTime = item.completed_at ? new Date(item.completed_at).getTime() : 0;
+
+    const isItemFinished = item.status === "Finished";
+    const isExistingFinished = existing.status === "Finished";
+
+    let winner: TaskLogItem;
+    if (isItemFinished && !isExistingFinished) {
+      winner = { ...existing, ...item, status: "Finished" };
+    } else if (isExistingFinished && !isItemFinished) {
+      winner = itemTime > existingTime ? { ...existing, ...item } : existing;
+    } else {
+      winner = itemTime >= existingTime ? item : existing;
+    }
+
+    winner = {
+      ...winner,
+      lastStep: winner.lastStep || existing.lastStep || item.lastStep || "",
+      app: winner.app || existing.app || item.app,
+    };
+    map.set(key, winner);
+  }
+
+  return Array.from(map.values());
+}
+
 export const storage = {
   // Session (User-Scoped)
   getSession(userId?: string): SessionData | null {
@@ -68,9 +108,11 @@ export const storage = {
     try {
       const key = resolveKey(SESSION_KEY, userId);
       localStorage.removeItem(key);
-      if (getActiveUserId(userId) === "guest") {
-        localStorage.removeItem("startease_active_session");
-      }
+      localStorage.removeItem("startease_active_session");
+      localStorage.removeItem("startease_session");
+      const uid = getActiveUserId(userId);
+      localStorage.removeItem(`startease_${uid}_${SESSION_KEY}`);
+      localStorage.removeItem(`startease_${uid}_active_session`);
     } catch {}
   },
 
@@ -102,17 +144,17 @@ export const storage = {
     }
   },
 
-  // Gentle Log (User-Scoped)
+  // Logs (User-Scoped)
   getLog(userId?: string): TaskLogItem[] {
     if (typeof window === "undefined") return [];
     try {
       const key = resolveKey(LOG_KEY, userId);
       const raw = localStorage.getItem(key);
-      if (raw) return JSON.parse(raw);
+      if (raw) return deduplicateLogs(JSON.parse(raw));
 
       if (getActiveUserId(userId) === "guest") {
         const legacy = localStorage.getItem("startease_gentle_log");
-        return legacy ? JSON.parse(legacy) : [];
+        return legacy ? deduplicateLogs(JSON.parse(legacy)) : [];
       }
       return [];
     } catch {
@@ -124,7 +166,8 @@ export const storage = {
     if (typeof window === "undefined") return;
     try {
       const key = resolveKey(LOG_KEY, userId);
-      localStorage.setItem(key, JSON.stringify(items.slice(0, 50)));
+      const deduplicated = deduplicateLogs(items);
+      localStorage.setItem(key, JSON.stringify(deduplicated.slice(0, 50)));
     } catch (e) {
       console.warn("Storage error setting log:", e);
     }
@@ -135,29 +178,37 @@ export const storage = {
   },
 
   addOrUpdateLog(item: TaskLogItem, userId?: string): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !item || !item.task) return;
     try {
       const key = resolveKey(LOG_KEY, userId);
       const current = this.getLog(userId);
+      const normTask = item.task.trim().toLowerCase();
+
+      // Match by id or matching task title
       const existingIndex = current.findIndex(
-        (i) => i.id === item.id && (i.task === item.task || !i.task)
+        (i) => i.id === item.id || (i.task && i.task.trim().toLowerCase() === normTask)
       );
       let updated: TaskLogItem[];
       if (existingIndex >= 0) {
         updated = [...current];
         const existing = updated[existingIndex];
         const keepFinished = existing.status === "Finished" && item.status !== "Finished";
-        updated[existingIndex] = {
+        const merged: TaskLogItem = {
           ...existing,
           ...item,
           status: keepFinished ? "Finished" : item.status,
           lastStep: item.lastStep || existing.lastStep || "",
           app: item.app || existing.app,
+          date: item.date || existing.date,
+          completed_at: item.completed_at || existing.completed_at,
         };
+        updated.splice(existingIndex, 1);
+        updated.unshift(merged);
       } else {
         updated = [item, ...current];
       }
-      localStorage.setItem(key, JSON.stringify(updated.slice(0, 50)));
+      const deduplicated = deduplicateLogs(updated);
+      localStorage.setItem(key, JSON.stringify(deduplicated.slice(0, 50)));
     } catch (e) {
       console.warn("Storage error adding log item:", e);
     }
@@ -198,6 +249,9 @@ export const storage = {
     try {
       const key = resolveKey(DRAFT_KEY, userId);
       localStorage.removeItem(key);
+      localStorage.removeItem("startease_task_draft");
+      const uid = getActiveUserId(userId);
+      localStorage.removeItem(`startease_${uid}_${DRAFT_KEY}`);
     } catch {}
   },
 

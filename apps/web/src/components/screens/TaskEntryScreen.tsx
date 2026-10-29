@@ -19,6 +19,7 @@ import { SessionData } from "@/lib/types";
 
 interface TaskEntryScreenProps {
   userId?: string;
+  activeSession?: SessionData | null;
   onSubmitTask: (task: string, deadline: string | null) => void;
   onResumeSavedTask: (session: SessionData) => void;
   onClearSavedTask: () => void;
@@ -26,6 +27,7 @@ interface TaskEntryScreenProps {
 
 export function TaskEntryScreen({
   userId,
+  activeSession,
   onSubmitTask,
   onResumeSavedTask,
   onClearSavedTask,
@@ -39,17 +41,17 @@ export function TaskEntryScreen({
   useEffect(() => {
     // Load draft if any
     const draft = storage.getDraft(userId);
-    if (draft) setTaskText(draft);
+    setTaskText(draft || "");
 
-    // Check for paused task
-    const session = storage.getSession(userId);
+    // Check for paused task (prefer prop or local storage)
+    const session = activeSession !== undefined ? activeSession : storage.getSession(userId);
     const isDone = session && (session.status === "completed" || session.status === "complete");
     if (session && session.step && !isDone && session.status !== "no_match" && session.status !== "crisis") {
       setSavedSession(session);
     } else {
       setSavedSession(null);
     }
-  }, [userId]);
+  }, [userId, activeSession]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTaskText(e.target.value);
@@ -292,7 +294,11 @@ export function TaskEntryScreen({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={onClearSavedTask}
+                onClick={() => {
+                  setSavedSession(null);
+                  setTaskText("");
+                  onClearSavedTask();
+                }}
                 className="text-xs text-[#52705D] hover:underline transition-colors cursor-pointer"
               >
                 Start a new task instead

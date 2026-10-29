@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sprout, User, Shield, Trash2, X, LogIn, LogOut } from "lucide-react";
+import { User, Shield, Trash2, LogIn, LogOut } from "lucide-react";
 import { UserProfile } from "@/lib/types";
 
 interface NavbarProps {
@@ -29,34 +29,16 @@ export function Navbar({
 
   return (
     <header className="w-full bg-[#EBF5EE] px-4 md:px-8 py-3.5 flex items-center justify-between">
-      {/* Brand logo & tagline */}
-      <div className="flex items-center gap-3">
+      {/* Brand title */}
+      <div className="flex items-center">
         <button
           onClick={() => onTabChange("decompose")}
-          className="flex items-center gap-2.5 text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/30 rounded-lg p-0.5 cursor-pointer"
+          className="flex items-center text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A3D]/30 rounded-lg p-0.5 cursor-pointer"
         >
-          <div className="w-9 h-9 rounded-full bg-[#E2EFE7] flex items-center justify-center text-[#1C3E27]">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2.5C12 2.5 10.5 6.5 8 8C5.5 9.5 4 13 4 16C4 18 5.5 19.5 7.5 19.5C10.5 19.5 11.5 16 12 13C12.5 16 13.5 19.5 16.5 19.5C18.5 19.5 20 18 20 16C20 13 18.5 9.5 16 8C13.5 6.5 12 2.5 12 2.5Z" />
-              <path d="M12 12V21" stroke="#1C3E27" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
           <span className="font-serif-title text-[22px] font-bold text-[#112316] tracking-tight">
             StartEase
           </span>
         </button>
-        <span className="hidden sm:inline-flex rounded-full px-3 py-1 bg-[#DEEDE2] text-[#34533E] text-xs font-normal">
-          Calm task initiation
-        </span>
-      </div>
-
-      {/* Center pill badge matching 02-task-entry.png */}
-      <div className="hidden md:flex items-center gap-1.5 rounded-full px-4 py-1.5 bg-[#DEEDE2] text-[#274B33] text-xs font-normal">
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2.5C12 2.5 10.5 6.5 8 8C5.5 9.5 4 13 4 16C4 18 5.5 19.5 7.5 19.5C10.5 19.5 11.5 16 12 13C12.5 16 13.5 19.5 16.5 19.5C18.5 19.5 20 18 20 16C20 13 18.5 9.5 16 8C13.5 6.5 12 2.5 12 2.5Z" />
-          <path d="M12 12V21" stroke="#274B33" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        <span>One tiny step at a time</span>
       </div>
 
       {/* Navigation tabs & Avatar menu */}
@@ -90,7 +72,7 @@ export function Navbar({
                 : "text-[#435F4D] hover:text-[#15301E] font-normal"
             }`}
           >
-            Gentle Log
+            Logs
           </button>
           <button
             onClick={() => onTabChange("preferences")}

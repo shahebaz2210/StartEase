@@ -130,6 +130,8 @@ export default function Home() {
           setCurrentScreen("step");
           setActiveTab("focus");
         }
+      } else {
+        setSession(null);
       }
     };
 
@@ -624,12 +626,52 @@ export default function Home() {
 
   // 10. Clear Session
   const handleClearSession = async () => {
-    if (session) {
-      await api.deleteSession(session.session_id);
+    const activeUid = user?.id || storage.getAuthUser()?.id;
+    const currentSession = session || storage.getSession(activeUid);
+
+    // 1. Delete on backend server
+    if (currentSession?.session_id) {
+      await api.deleteSession(currentSession.session_id);
     }
-    updateSessionState(null);
-    setCurrentScreen("welcome");
-    setActiveTab("decompose");
+
+    // 2. Clear from local storage
+    storage.clearSession(activeUid);
+    storage.clearDraft(activeUid);
+
+    // 3. Remove unfinished/paused active task from local logs
+    if (currentSession?.task) {
+      const logs = storage.getLog(activeUid);
+      const filtered = logs.filter(
+        (l) =>
+          l.id !== currentSession.session_id &&
+          l.task.trim().toLowerCase() !== currentSession.task.trim().toLowerCase()
+      );
+      storage.setLog(filtered, activeUid);
+    }
+
+    // 4. Clear from Supabase (await it to prevent window.onfocus race condition)
+    if (activeUid && activeUid !== "guest") {
+      try {
+        await supabaseDb.clearActiveSession(activeUid);
+        if (currentSession?.session_id) {
+          await supabase.from("task_logs").delete().eq("id", currentSession.session_id);
+        }
+      } catch (e) {
+        console.warn("Error clearing Supabase session:", e);
+      }
+    }
+
+    // 5. Reset React state
+    setSession(null);
+
+    // 6. Navigate to appropriate screen
+    if (activeUid && activeUid !== "guest") {
+      setCurrentScreen("decompose");
+      setActiveTab("decompose");
+    } else {
+      setCurrentScreen("welcome");
+      setActiveTab("decompose");
+    }
   };
 
   // 11. Navigation Tab Switching
@@ -663,7 +705,11 @@ export default function Home() {
           userId={user?.id}
           onResumeTask={(item) => {
             const saved = storage.getSession(user?.id);
-            if (saved && saved.session_id === item.id) {
+            if (
+              saved &&
+              (saved.session_id === item.id ||
+                (saved.task && saved.task.trim().toLowerCase() === item.task.trim().toLowerCase()))
+            ) {
               setSession(saved);
               setCurrentScreen("step");
               setActiveTab("focus");
@@ -701,6 +747,7 @@ export default function Home() {
         return (
           <TaskEntryScreen
             userId={user?.id}
+            activeSession={session}
             onSubmitTask={handleSubmitTask}
             onResumeSavedTask={(saved) => {
               setSession(saved);

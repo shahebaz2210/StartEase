@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { BookOpen, Trash2, ArrowRight } from "lucide-react";
-import { storage } from "@/lib/storage";
+import { storage, deduplicateLogs } from "@/lib/storage";
 import { TaskLogItem } from "@/lib/types";
 import { supabaseDb } from "@/lib/supabase";
 
@@ -15,7 +15,7 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
   const [logItems, setLogItems] = useState<TaskLogItem[]>([]);
 
   useEffect(() => {
-    // 1. Initial load from local user-scoped storage
+    // 1. Initial load from local user-scoped storage (auto-deduplicated)
     const local = storage.getLog(userId);
     setLogItems(local);
 
@@ -23,15 +23,16 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
     if (userId && userId !== "guest") {
       supabaseDb.fetchTaskLogs(userId).then((cloudLogs) => {
         if (cloudLogs && cloudLogs.length > 0) {
-          // Merge by id (preferring recent)
-          const merged = [...cloudLogs];
+          // Combine local & cloud logs and deduplicate
+          const combined = [...cloudLogs];
           for (const loc of local) {
-            if (!merged.some((m) => m.id === loc.id)) {
-              merged.push(loc);
+            if (!combined.some((m) => m.id === loc.id)) {
+              combined.push(loc);
             }
           }
-          storage.setLog(merged, userId);
-          setLogItems(merged);
+          const deduplicated = deduplicateLogs(combined);
+          storage.setLog(deduplicated, userId);
+          setLogItems(deduplicated);
         }
       });
     }
@@ -55,7 +56,7 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
             </div>
             <div>
               <h1 className="font-serif-title text-2xl font-bold text-[#1A3323]">
-                Gentle Log
+                Logs
               </h1>
               <p className="text-xs text-[#718779]">
                 {userId && userId !== "guest"
