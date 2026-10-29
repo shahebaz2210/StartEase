@@ -145,6 +145,9 @@ export default function FloatPage() {
       if (prefs.calmMotion) {
         root.classList.add("calm-motion");
       }
+      if (prefs.dyslexiaFriendly) {
+        root.classList.add("dyslexia-friendly");
+      }
       if (prefs.textSize) {
         root.classList.add(`text-size-${prefs.textSize}`);
         root.style.fontSize =

@@ -52,6 +52,12 @@ export default function Home() {
       root.classList.remove("calm-motion");
     }
 
+    if (preferences.dyslexiaFriendly) {
+      root.classList.add("dyslexia-friendly");
+    } else {
+      root.classList.remove("dyslexia-friendly");
+    }
+
     if (typeof window !== "undefined" && (window as any).electronApi?.setOpacity) {
       (window as any).electronApi.setOpacity((preferences.windowOpacity || 100) / 100);
     }

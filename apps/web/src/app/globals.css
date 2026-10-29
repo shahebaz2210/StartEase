@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.cdnfonts.com/css/open-dyslexic');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Lexend:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -66,6 +67,36 @@ html.calm-motion * {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
+}
+
+/* Dyslexia-friendly reading mode */
+html.dyslexia-friendly,
+html.dyslexia-friendly body,
+.dyslexia-friendly,
+.dyslexia-friendly body {
+  font-family: 'OpenDyslexic', 'Lexend', 'Atkinson Hyperlegible', sans-serif !important;
+  letter-spacing: 0.045em !important;
+  word-spacing: 0.08em !important;
+  line-height: 1.7 !important;
+}
+
+html.dyslexia-friendly .font-serif-title,
+.dyslexia-friendly .font-serif-title {
+  font-family: 'OpenDyslexic', 'Lexend', 'Atkinson Hyperlegible', sans-serif !important;
+  letter-spacing: 0.035em !important;
+  font-weight: 700 !important;
+}
+
+html.dyslexia-friendly h1,
+html.dyslexia-friendly h2,
+html.dyslexia-friendly h3,
+html.dyslexia-friendly p,
+html.dyslexia-friendly span,
+html.dyslexia-friendly button,
+html.dyslexia-friendly input,
+html.dyslexia-friendly textarea {
+  letter-spacing: 0.04em !important;
+  line-height: 1.65 !important;
 }
 
 /* Card and container styling */

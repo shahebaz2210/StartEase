@@ -43,6 +43,14 @@ export function PreferencesScreen({ userId, onPreferencesChange }: PreferencesSc
           root.classList.remove("calm-motion");
         }
       }
+
+      if (key === "dyslexiaFriendly") {
+        if (value) {
+          root.classList.add("dyslexia-friendly");
+        } else {
+          root.classList.remove("dyslexia-friendly");
+        }
+      }
     }
 
     // Direct Electron window opacity control
@@ -105,6 +113,22 @@ export function PreferencesScreen({ userId, onPreferencesChange }: PreferencesSc
               type="checkbox"
               checked={prefs.calmMotion}
               onChange={(e) => updatePreference("calmMotion", e.target.checked)}
+              className="w-5 h-5 accent-[#2D5A3D] rounded cursor-pointer"
+            />
+          </div>
+
+          {/* Dyslexia-friendly reading */}
+          <div className="flex items-center justify-between py-2 border-t border-[#D3E4D8]/30">
+            <div>
+              <p className="text-sm font-semibold text-[#1A3323]">Dyslexia-friendly reading</p>
+              <p className="text-xs text-[#718779]">
+                Uses specialized high-legibility typography, wider letter spacing, and open character shapes
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={prefs.dyslexiaFriendly}
+              onChange={(e) => updatePreference("dyslexiaFriendly", e.target.checked)}
               className="w-5 h-5 accent-[#2D5A3D] rounded cursor-pointer"
             />
           </div>

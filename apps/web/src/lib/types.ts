@@ -36,6 +36,7 @@ export interface UserPreferences {
   readAloud: boolean;
   showShortcuts: boolean;
   windowOpacity: number;
+  dyslexiaFriendly: boolean;
 }
 
 export interface UserProfile {

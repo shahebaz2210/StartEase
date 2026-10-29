@@ -14,6 +14,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   readAloud: false,
   showShortcuts: true,
   windowOpacity: 100,
+  dyslexiaFriendly: false,
 };
 
 function getActiveUserId(explicitId?: string): string {
