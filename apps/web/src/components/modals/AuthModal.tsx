@@ -54,11 +54,8 @@ export function AuthModal({
       }
     } catch (err: any) {
       console.error("Auth error:", err);
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Could not connect to the service. Please make sure the backend is running.");
-      }
+      const msg = err?.message || err?.data?.message || (err instanceof ApiError ? err.message : "Could not sign in. Please check your credentials.");
+      setError(msg);
     } finally {
       setLoading(false);
     }
