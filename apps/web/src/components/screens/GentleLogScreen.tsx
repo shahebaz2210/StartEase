@@ -1,23 +1,47 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { BookOpen, RotateCcw, Trash2, ArrowRight } from "lucide-react";
+import { BookOpen, Trash2, ArrowRight } from "lucide-react";
 import { storage } from "@/lib/storage";
 import { TaskLogItem } from "@/lib/types";
+import { supabaseDb } from "@/lib/supabase";
 
 interface GentleLogScreenProps {
   onResumeTask: (item: TaskLogItem) => void;
+  userId?: string;
 }
 
-export function GentleLogScreen({ onResumeTask }: GentleLogScreenProps) {
+export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) {
   const [logItems, setLogItems] = useState<TaskLogItem[]>([]);
 
   useEffect(() => {
-    setLogItems(storage.getLog());
-  }, []);
+    // 1. Initial load from local user-scoped storage
+    const local = storage.getLog(userId);
+    setLogItems(local);
+
+    // 2. If authenticated user, sync with Supabase cloud task_logs
+    if (userId && userId !== "guest") {
+      supabaseDb.fetchTaskLogs(userId).then((cloudLogs) => {
+        if (cloudLogs && cloudLogs.length > 0) {
+          // Merge by id (preferring recent)
+          const merged = [...cloudLogs];
+          for (const loc of local) {
+            if (!merged.some((m) => m.id === loc.id)) {
+              merged.push(loc);
+            }
+          }
+          storage.setLog(merged, userId);
+          setLogItems(merged);
+        }
+      });
+    }
+  }, [userId]);
 
   const handleClearLog = () => {
-    storage.clearLog();
+    storage.clearLog(userId);
+    if (userId && userId !== "guest") {
+      supabaseDb.clearTaskLogs(userId).catch(() => {});
+    }
     setLogItems([]);
   };
 
@@ -34,7 +58,9 @@ export function GentleLogScreen({ onResumeTask }: GentleLogScreenProps) {
                 Gentle Log
               </h1>
               <p className="text-xs text-[#718779]">
-                Tasks you started, kept on this device only.
+                {userId && userId !== "guest"
+                  ? "Tasks you started, private to your account."
+                  : "Tasks you started, kept on this device only."}
               </p>
             </div>
           </div>

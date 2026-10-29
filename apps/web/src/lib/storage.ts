@@ -1,9 +1,9 @@
 import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "./types";
 
-const SESSION_KEY = "startease_active_session";
-const PREFS_KEY = "startease_user_preferences";
-const LOG_KEY = "startease_gentle_log";
-const DRAFT_KEY = "startease_task_draft";
+const SESSION_KEY = "active_session";
+const PREFS_KEY = "user_preferences";
+const LOG_KEY = "gentle_log";
+const DRAFT_KEY = "task_draft";
 const AUTH_TOKEN_KEY = "startease_auth_token";
 const AUTH_USER_KEY = "startease_auth_user";
 
@@ -15,73 +15,130 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   windowOpacity: 100,
 };
 
+function getActiveUserId(explicitId?: string): string {
+  if (explicitId && explicitId.trim()) return explicitId.trim();
+  if (typeof window === "undefined") return "guest";
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.id) return parsed.id;
+    }
+  } catch {}
+  return "guest";
+}
+
+function resolveKey(baseKey: string, explicitUserId?: string): string {
+  const uid = getActiveUserId(explicitUserId);
+  return `startease_${uid}_${baseKey}`;
+}
+
 export const storage = {
-  // Session
-  getSession(): SessionData | null {
+  // Session (User-Scoped)
+  getSession(userId?: string): SessionData | null {
     if (typeof window === "undefined") return null;
     try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const key = resolveKey(SESSION_KEY, userId);
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw);
+
+      // Backwards compatibility fallback for guest sessions
+      if (getActiveUserId(userId) === "guest") {
+        const legacy = localStorage.getItem("startease_active_session");
+        return legacy ? JSON.parse(legacy) : null;
+      }
+      return null;
     } catch {
       return null;
     }
   },
 
-  saveSession(session: SessionData): void {
+  saveSession(session: SessionData, userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      const key = resolveKey(SESSION_KEY, userId);
+      localStorage.setItem(key, JSON.stringify(session));
     } catch (e) {
       console.warn("Storage error saving session:", e);
     }
   },
 
-  clearSession(): void {
+  clearSession(userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.removeItem(SESSION_KEY);
+      const key = resolveKey(SESSION_KEY, userId);
+      localStorage.removeItem(key);
+      if (getActiveUserId(userId) === "guest") {
+        localStorage.removeItem("startease_active_session");
+      }
     } catch {}
   },
 
-  // Preferences
-  getPreferences(): UserPreferences {
+  // Preferences (User-Scoped)
+  getPreferences(userId?: string): UserPreferences {
     if (typeof window === "undefined") return DEFAULT_PREFERENCES;
     try {
-      const raw = localStorage.getItem(PREFS_KEY);
-      return raw ? { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } : DEFAULT_PREFERENCES;
+      const key = resolveKey(PREFS_KEY, userId);
+      const raw = localStorage.getItem(key);
+      if (raw) return { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) };
+
+      if (getActiveUserId(userId) === "guest") {
+        const legacy = localStorage.getItem("startease_user_preferences");
+        return legacy ? { ...DEFAULT_PREFERENCES, ...JSON.parse(legacy) } : DEFAULT_PREFERENCES;
+      }
+      return DEFAULT_PREFERENCES;
     } catch {
       return DEFAULT_PREFERENCES;
     }
   },
 
-  savePreferences(prefs: UserPreferences): void {
+  savePreferences(prefs: UserPreferences, userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      const key = resolveKey(PREFS_KEY, userId);
+      localStorage.setItem(key, JSON.stringify(prefs));
     } catch (e) {
       console.warn("Storage error saving preferences:", e);
     }
   },
 
-  // Gentle Log
-  getLog(): TaskLogItem[] {
+  // Gentle Log (User-Scoped)
+  getLog(userId?: string): TaskLogItem[] {
     if (typeof window === "undefined") return [];
     try {
-      const raw = localStorage.getItem(LOG_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const key = resolveKey(LOG_KEY, userId);
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw);
+
+      if (getActiveUserId(userId) === "guest") {
+        const legacy = localStorage.getItem("startease_gentle_log");
+        return legacy ? JSON.parse(legacy) : [];
+      }
+      return [];
     } catch {
       return [];
     }
   },
 
-  addLogItem(item: TaskLogItem): void {
-    this.addOrUpdateLog(item);
-  },
-
-  addOrUpdateLog(item: TaskLogItem): void {
+  setLog(items: TaskLogItem[], userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      const current = this.getLog();
+      const key = resolveKey(LOG_KEY, userId);
+      localStorage.setItem(key, JSON.stringify(items.slice(0, 50)));
+    } catch (e) {
+      console.warn("Storage error setting log:", e);
+    }
+  },
+
+  addLogItem(item: TaskLogItem, userId?: string): void {
+    this.addOrUpdateLog(item, userId);
+  },
+
+  addOrUpdateLog(item: TaskLogItem, userId?: string): void {
+    if (typeof window === "undefined") return;
+    try {
+      const key = resolveKey(LOG_KEY, userId);
+      const current = this.getLog(userId);
       const existingIndex = current.findIndex((i) => i.id === item.id);
       let updated: TaskLogItem[];
       if (existingIndex >= 0) {
@@ -90,44 +147,51 @@ export const storage = {
       } else {
         updated = [item, ...current];
       }
-      localStorage.setItem(LOG_KEY, JSON.stringify(updated.slice(0, 50)));
+      localStorage.setItem(key, JSON.stringify(updated.slice(0, 50)));
     } catch (e) {
       console.warn("Storage error adding log item:", e);
     }
   },
 
-  clearLog(): void {
+  clearLog(userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.removeItem(LOG_KEY);
+      const key = resolveKey(LOG_KEY, userId);
+      localStorage.removeItem(key);
+      if (getActiveUserId(userId) === "guest") {
+        localStorage.removeItem("startease_gentle_log");
+      }
     } catch {}
   },
 
-  // Drafts
-  getDraft(): string {
+  // Drafts (User-Scoped)
+  getDraft(userId?: string): string {
     if (typeof window === "undefined") return "";
     try {
-      return localStorage.getItem(DRAFT_KEY) || "";
+      const key = resolveKey(DRAFT_KEY, userId);
+      return localStorage.getItem(key) || "";
     } catch {
       return "";
     }
   },
 
-  saveDraft(draft: string): void {
+  saveDraft(draft: string, userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(DRAFT_KEY, draft);
+      const key = resolveKey(DRAFT_KEY, userId);
+      localStorage.setItem(key, draft);
     } catch {}
   },
 
-  clearDraft(): void {
+  clearDraft(userId?: string): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      const key = resolveKey(DRAFT_KEY, userId);
+      localStorage.removeItem(key);
     } catch {}
   },
 
-  // Authentication Storage
+  // Authentication Storage (Global tokens for current session)
   getAuthToken(): string | null {
     if (typeof window === "undefined") return null;
     try {

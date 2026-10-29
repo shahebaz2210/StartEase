@@ -18,6 +18,7 @@ import { PrivacyModal } from "@/components/modals/PrivacyModal";
 import { AuthModal } from "@/components/modals/AuthModal";
 import { api, ApiError } from "@/lib/api";
 import { storage } from "@/lib/storage";
+import { supabaseDb } from "@/lib/supabase";
 import { SessionData, TaskLogItem, UserPreferences, UserProfile } from "@/lib/types";
 
 export default function Home() {
@@ -57,21 +58,48 @@ export default function Home() {
 
   const handleAuthSuccess = (authenticatedUser: UserProfile) => {
     setUser(authenticatedUser);
-    if (currentScreen === "welcome") {
+    // Switch session and preferences to the newly authenticated user
+    const userSession = storage.getSession(authenticatedUser.id);
+    const prefs = storage.getPreferences(authenticatedUser.id);
+    setPreferences(prefs);
+    if (userSession && userSession.step && userSession.status !== "completed" && userSession.status !== "no_match" && userSession.status !== "crisis") {
+      setSession(userSession);
+      if (userSession.status === "rest") {
+        setCurrentScreen("rest");
+        setActiveTab("focus");
+      } else {
+        setCurrentScreen("step");
+        setActiveTab("focus");
+      }
+    } else {
+      setSession(null);
       setCurrentScreen("decompose");
+      setActiveTab("decompose");
     }
   };
 
   const handleLogout = async () => {
     await api.logout();
     setUser(null);
+    // Switch back to clean guest space
+    const guestSession = storage.getSession("guest");
+    const guestPrefs = storage.getPreferences("guest");
+    setPreferences(guestPrefs);
+    if (guestSession && guestSession.step && guestSession.status !== "completed" && guestSession.status !== "no_match" && guestSession.status !== "crisis") {
+      setSession(guestSession);
+    } else {
+      setSession(null);
+    }
+    setCurrentScreen("welcome");
+    setActiveTab("decompose");
   };
 
   // Restore session from localStorage on initial load and keep synchronized across windows
   useEffect(() => {
     const syncFromStorage = () => {
-      const saved = storage.getSession();
-      const prefs = storage.getPreferences();
+      const activeUid = user?.id || storage.getAuthUser()?.id;
+      const saved = storage.getSession(activeUid);
+      const prefs = storage.getPreferences(activeUid);
       setPreferences(prefs);
 
       if (saved && saved.step && saved.status !== "no_match" && saved.status !== "crisis") {
@@ -90,8 +118,9 @@ export default function Home() {
     };
 
     // Initial check on mount
-    const initialSaved = storage.getSession();
-    const initialPrefs = storage.getPreferences();
+    const activeUid = user?.id || storage.getAuthUser()?.id;
+    const initialSaved = storage.getSession(activeUid);
+    const initialPrefs = storage.getPreferences(activeUid);
     setPreferences(initialPrefs);
     if (initialSaved && initialSaved.step && initialSaved.status !== "completed" && initialSaved.status !== "no_match" && initialSaved.status !== "crisis") {
       setSession(initialSaved);
@@ -117,24 +146,30 @@ export default function Home() {
       window.removeEventListener("storage", syncFromStorage);
       window.removeEventListener("focus", syncFromStorage);
     };
-  }, []);
+  }, [user?.id]);
 
   // Update session in storage whenever it changes
   const updateSessionState = (newSession: SessionData | null) => {
     setSession(newSession);
+    const uid = user?.id;
     if (newSession && newSession.status !== "no_match" && newSession.status !== "crisis") {
-      storage.saveSession(newSession);
+      storage.saveSession(newSession, uid);
       // Update Gentle Log
-      storage.addOrUpdateLog({
+      const logItem: TaskLogItem = {
         id: newSession.session_id,
         task: newSession.task,
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         status: newSession.status === "completed" ? "Finished" : "Paused",
         lastStep: newSession.step || "",
         app: newSession.app,
-      });
+        completed_at: new Date().toISOString(),
+      };
+      storage.addOrUpdateLog(logItem, uid);
+      if (uid && uid !== "guest") {
+        supabaseDb.upsertTaskLog(logItem, uid).catch(() => {});
+      }
     } else {
-      storage.clearSession();
+      storage.clearSession(uid);
     }
   };
 
@@ -527,8 +562,9 @@ export default function Home() {
     if (activeTab === "log") {
       return (
         <GentleLogScreen
+          userId={user?.id}
           onResumeTask={(item) => {
-            const saved = storage.getSession();
+            const saved = storage.getSession(user?.id);
             if (saved && saved.session_id === item.id) {
               setSession(saved);
               setCurrentScreen("step");
