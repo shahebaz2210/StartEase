@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -53,6 +53,7 @@ class StepResponse(BaseModel):
     variant: Optional[VariantEnum] = Field(None, description="Variant label indicator (normal, explained, smaller, simpler)")
     has_more_tasks: Optional[bool] = Field(False, description="Whether another task is queued")
     next_task_title: Optional[str] = Field(None, description="Title of next queued task if any")
+    task_queue: List[str] = Field(default_factory=list, description="All queued tasks remaining in this brain-dump session")
 
 
 class CreateSessionRequest(BaseModel):

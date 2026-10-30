@@ -130,6 +130,8 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
                       className={`startease-pill text-[11px] py-0.5 px-2 ${
                         item.status === "Finished"
                           ? "bg-[#DDEEE2] text-[#2D5A3D]"
+                          : item.status === "Queued"
+                          ? "bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]"
                           : "bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]"
                       }`}
                     >
@@ -142,7 +144,7 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
                   <p className="text-[11px] text-[#718779]">{item.date}</p>
                 </div>
 
-                {item.status === "Paused" && (
+                {(item.status === "Paused" || item.status === "Queued") && (
                   <button
                     type="button"
                     disabled={resumingId !== null}
@@ -156,11 +158,11 @@ export function GentleLogScreen({ onResumeTask, userId }: GentleLogScreenProps) 
                     {resumingId === item.id ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-emerald-200/40 border-t-emerald-200 rounded-full animate-spin" />
-                        <span>Resuming...</span>
+                        <span>{item.status === "Queued" ? "Starting..." : "Resuming..."}</span>
                       </>
                     ) : (
                       <>
-                        <span>Resume</span>
+                        <span>{item.status === "Queued" ? "Start" : "Resume"}</span>
                         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                       </>
                     )}

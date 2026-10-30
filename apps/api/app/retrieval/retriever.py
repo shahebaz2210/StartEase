@@ -80,6 +80,15 @@ UNSUPPORTED_DOMAINS = [
 
 # Common student & academic term expansions to enrich sparse catalogue matches
 SYNONYM_EXPANSIONS: Dict[str, str] = {
+    # AI & Computer Science academic acronyms
+    r"\b(aiml|ai/ml|ai\s*&\s*ml)\b": "artificial intelligence and machine learning ai ml research paper college assignment academic_writing",
+    r"\bml\b": "machine learning artificial intelligence data_analysis",
+    r"\bdsa\b": "data structures algorithms code programming vscode",
+    r"\bdbms\b": "database management systems sql dbdiagram",
+    r"\bnlp\b": "natural language processing artificial intelligence research paper",
+    r"\bdl\b": "deep learning neural networks artificial intelligence",
+    r"\bds\b": "data science analytics statistics",
+
     # Academic writing & assignments
     r"\bessays?\b": "research paper college assignment academic_writing",
     r"\bhomeworks?\b": "assignment college_assignment study",

@@ -173,6 +173,7 @@ def create_session(request: CreateSessionRequest):
         variant=VariantEnum.NORMAL,
         has_more_tasks=session.has_more_tasks,
         next_task_title=session.next_task_title,
+        task_queue=session.task_queue,
     )
 
 
@@ -217,6 +218,7 @@ def respond_to_step(
                 app=app_obj,
                 has_more_tasks=session.has_more_tasks,
                 next_task_title=session.next_task_title,
+                task_queue=session.task_queue,
             )
         return StepResponse(
             session_id=session.session_id,
@@ -227,6 +229,7 @@ def respond_to_step(
             variant=VariantEnum.NORMAL,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     elif user_resp == UserResponseEnum.SIMPLER_STEP:
@@ -252,6 +255,7 @@ def respond_to_step(
             variant=VariantEnum.SIMPLER,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     elif user_resp == UserResponseEnum.CONFUSED:
@@ -274,6 +278,7 @@ def respond_to_step(
             variant=VariantEnum.EXPLAINED,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     elif user_resp == UserResponseEnum.TOO_BIG:
@@ -299,6 +304,7 @@ def respond_to_step(
             variant=VariantEnum.SMALLER,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     elif user_resp == UserResponseEnum.NOT_NOW:
@@ -313,6 +319,7 @@ def respond_to_step(
             variant=VariantEnum(session.variant) if session.variant in ["normal", "explained", "smaller"] else None,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     elif user_resp == UserResponseEnum.CANT_USE_APP:
@@ -330,6 +337,7 @@ def respond_to_step(
             variant=VariantEnum.NORMAL,
             has_more_tasks=session.has_more_tasks,
             next_task_title=session.next_task_title,
+            task_queue=session.task_queue,
         )
 
     return JSONResponse(
@@ -389,6 +397,7 @@ def resume_session(
         variant=VariantEnum(session.variant) if session.variant in ["normal", "explained", "smaller"] else VariantEnum.NORMAL,
         has_more_tasks=session.has_more_tasks,
         next_task_title=session.next_task_title,
+        task_queue=session.task_queue,
     )
 
 
@@ -452,6 +461,7 @@ def start_next_task(
         variant=VariantEnum.NORMAL,
         has_more_tasks=session.has_more_tasks,
         next_task_title=session.next_task_title,
+        task_queue=session.task_queue,
     )
 
 

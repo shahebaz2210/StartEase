@@ -262,9 +262,11 @@ export const storage = {
       const current = this.getLog(userId);
       const normTask = item.task.trim().toLowerCase();
 
-      // Match by id or matching task title
+      // Match primarily by normalized task title so sibling queued tasks with the same session id don't overwrite each other
       const existingIndex = current.findIndex(
-        (i) => i.id === item.id || (i.task && i.task.trim().toLowerCase() === normTask)
+        (i) =>
+          (i.task && i.task.trim().toLowerCase() === normTask) ||
+          (i.id === item.id && (!i.task || i.task.trim().toLowerCase() === normTask))
       );
       let updated: TaskLogItem[];
       if (existingIndex >= 0) {

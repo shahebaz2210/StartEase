@@ -163,8 +163,9 @@ export default function FloatPage() {
     storage.saveSession(next);
     if (next.status !== "no_match" && next.status !== "crisis") {
       const isComplete = next.status === "completed" || next.status === "complete";
+      const normTask = (next.task || "").trim().toLowerCase();
       const logItem: TaskLogItem = {
-        id: next.session_id,
+        id: `${next.session_id}_${encodeURIComponent(normTask)}`,
         task: next.task,
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         status: isComplete ? "Finished" : "Paused",

@@ -274,7 +274,10 @@ export default function Home() {
       // Update Gentle Log
       const isComplete = newSession.status === "completed" || newSession.status === "complete";
       const existingLogs = storage.getLog(uid);
-      const existingLog = existingLogs.find((l) => l.id === newSession.session_id);
+      const normCurrentTask = (newSession.task || "").trim().toLowerCase();
+      const existingLog = existingLogs.find(
+        (l) => l.task && l.task.trim().toLowerCase() === normCurrentTask
+      );
       const finalStatus = isComplete
         ? "Finished"
         : (newSession.status === "rest" && existingLog?.status === "Finished")
@@ -282,7 +285,7 @@ export default function Home() {
         : "Paused";
 
       const logItem: TaskLogItem = {
-        id: newSession.session_id,
+        id: `${newSession.session_id}_${encodeURIComponent(normCurrentTask)}`,
         task: newSession.task,
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         status: finalStatus,
@@ -291,6 +294,33 @@ export default function Home() {
         completed_at: new Date().toISOString(),
       };
       storage.addOrUpdateLog(logItem, uid);
+
+      // Register all sibling tasks from brain-dump as Queued in logs so they appear immediately
+      if (newSession.task_queue && Array.isArray(newSession.task_queue)) {
+        for (const queuedTask of newSession.task_queue) {
+          if (!queuedTask || !queuedTask.trim()) continue;
+          const normQueued = queuedTask.trim().toLowerCase();
+          if (normQueued === normCurrentTask) continue;
+          const existingQueued = existingLogs.find(
+            (l) => l.task && l.task.trim().toLowerCase() === normQueued
+          );
+          if (!existingQueued) {
+            const queuedItem: TaskLogItem = {
+              id: `${newSession.session_id}_${encodeURIComponent(normQueued)}`,
+              task: queuedTask.trim(),
+              date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+              status: "Queued",
+              lastStep: "Queued from brain-dump",
+              completed_at: new Date().toISOString(),
+            };
+            storage.addOrUpdateLog(queuedItem, uid);
+            if (uid && uid !== "guest") {
+              supabaseDb.upsertTaskLog(queuedItem, uid).catch(() => {});
+            }
+          }
+        }
+      }
+
       if (uid && uid !== "guest") {
         supabaseDb.upsertTaskLog(logItem, uid).catch(() => {});
         supabaseDb.upsertActiveSession(newSession, uid).catch(() => {});
@@ -383,6 +413,9 @@ export default function Home() {
         app: data.app,
         variant: data.variant,
         deadline: deadline,
+        has_more_tasks: data.has_more_tasks,
+        next_task_title: data.next_task_title,
+        task_queue: data.task_queue,
         timestamp: Date.now(),
       };
 
@@ -439,6 +472,9 @@ export default function Home() {
           step: res.step || active.step,
           app: res.app || active.app,
           status: "completed",
+          has_more_tasks: res.has_more_tasks,
+          next_task_title: res.next_task_title,
+          task_queue: res.task_queue || active.task_queue,
         };
         updateSessionState(completedSession);
         setCurrentScreen("complete");
@@ -449,6 +485,9 @@ export default function Home() {
           task: res.task || active.task,
           status: "step",
           variant: "normal",
+          has_more_tasks: res.has_more_tasks,
+          next_task_title: res.next_task_title,
+          task_queue: res.task_queue || active.task_queue,
         };
         updateSessionState(updatedSession);
         setCurrentScreen("step");
@@ -643,6 +682,9 @@ export default function Home() {
         task: res.task || nextTitle || session.task,
         status: "step" as const,
         variant: "normal" as const,
+        has_more_tasks: res.has_more_tasks,
+        next_task_title: res.next_task_title,
+        task_queue: res.task_queue || [],
       };
       updateSessionState(updated);
       setCurrentScreen("step");
@@ -835,7 +877,7 @@ export default function Home() {
               }
             }
 
-            if (targetSession && targetSession.step) {
+            if (targetSession && targetSession.step && item.status !== "Queued") {
               updateSessionState(targetSession);
               setCurrentScreen("step");
               setActiveTab("focus");

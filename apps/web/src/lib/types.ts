@@ -17,6 +17,7 @@ export interface SessionData {
   deadline?: string | null;
   has_more_tasks?: boolean;
   next_task_title?: string | null;
+  task_queue?: string[];
   timestamp?: number;
 }
 
